@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src weaver-preview: https://www.youtube-nocookie.com https://player.vimeo.com https://maps.google.com https://www.google.com; connect-src 'self' blob: data:">
+<title>Pocket-Web-Studio</title>
+<link rel="icon" href="logo.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app" id="app" data-mode="edit">
+  <header class="topbar">
+    <div class="brand">
+      <img class="brand-logo" src="logo.png" alt="" width="32" height="32">
+      <div class="brand-text"><b>Pocket-Web-Studio</b><span class="proj"><span id="projName">Untitled website</span><span class="dirty-dot" id="dirtyDot" hidden title="Unsaved changes"></span></span></div>
+    </div>
+    <div class="tb-group">
+      <button class="tbtn" id="newBtn" type="button" title="Start a new website"><span class="ico" data-icon="newfile"></span><span class="lbl">New</span></button>
+      <button class="tbtn" id="openBtn" type="button" title="Open a website project (Ctrl+O)"><span class="ico" data-icon="open"></span><span class="lbl">Open</span></button>
+      <button class="tbtn" id="importBtn" type="button" title="Import an existing website (Ctrl+I)"><span class="ico" data-icon="upload"></span><span class="lbl">Import</span></button>
+      <button class="tbtn" id="saveBtn" type="button" title="Save your project (Ctrl+S)"><span class="ico" data-icon="save"></span><span class="lbl">Save</span></button>
+      <span class="web-note" id="webNote" hidden>Kept in this browser</span>
+    </div>
+    <div class="tb-group">
+      <button class="tbtn icon" id="undoBtn" type="button" title="Undo (Ctrl+Z)" aria-label="Undo"><span class="ico" data-icon="undo"></span></button>
+      <button class="tbtn icon" id="redoBtn" type="button" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><span class="ico" data-icon="redo"></span></button>
+    </div>
+    <div class="seg mode-seg" role="group" aria-label="View">
+      <button type="button" data-mode-btn="edit" aria-pressed="true" title="Build your page (Ctrl+1)"><span class="ico" data-icon="pencil"></span>Edit</button>
+      <button type="button" data-mode-btn="preview" aria-pressed="false" title="See it as visitors will (Ctrl+2)"><span class="ico" data-icon="eye"></span>Preview</button>
+      <button type="button" data-mode-btn="code" aria-pressed="false" title="See the code Pocket-Web-Studio writes (Ctrl+3)"><span class="ico" data-icon="code"></span>Code</button>
+    </div>
+    <div class="seg dev-seg" role="group" aria-label="Screen size">
+      <button type="button" data-dev="desktop" aria-pressed="true" title="Computer" aria-label="Computer"><span class="ico" data-icon="desktop"></span></button>
+      <button type="button" data-dev="tablet" aria-pressed="false" title="Tablet" aria-label="Tablet"><span class="ico" data-icon="tablet"></span></button>
+      <button type="button" data-dev="phone" aria-pressed="false" title="Phone" aria-label="Phone"><span class="ico" data-icon="phone"></span></button>
+    </div>
+    <div class="tb-group end">
+      <button class="tbtn" id="browserBtn" type="button" title="Open this page in your web browser (F12)"><span class="ico" data-icon="external"></span><span class="lbl">Open in browser</span></button>
+      <button class="tbtn primary" id="publishBtn" type="button" title="Save your finished website to a folder"><span class="ico" data-icon="publish"></span><span class="lbl">Publish</span></button>
+    </div>
+  </header>
+
+  <aside class="left" aria-label="Building blocks">
+    <div class="ltabs" role="tablist">
+      <button class="ltab" type="button" role="tab" data-tab="add" aria-selected="true"><span class="ico" data-icon="add"></span>Add</button>
+      <button class="ltab" type="button" role="tab" data-tab="pages" aria-selected="false"><span class="ico" data-icon="pages"></span>Pages</button>
+      <button class="ltab" type="button" role="tab" data-tab="design" aria-selected="false"><span class="ico" data-icon="palette"></span>Design</button>
+    </div>
+    <div class="ltab-body" id="tab-add" role="tabpanel"></div>
+    <div class="ltab-body" id="tab-pages" role="tabpanel" hidden></div>
+    <div class="ltab-body" id="tab-design" role="tabpanel" hidden></div>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="frame-wrap" id="frameWrap" data-device="desktop">
+      <iframe id="canvas" title="Your page"></iframe>
+      <iframe id="preview" title="Preview of your website" hidden></iframe>
+    </div>
+    <div class="codeview" id="codeview" hidden>
+      <div class="code-head">
+        <div class="code-tabs" id="codeTabs" role="tablist" aria-label="Files"></div>
+        <button class="tbtn" id="copyCode" type="button"><span class="ico" data-icon="copy"></span><span class="lbl">Copy file</span></button>
+      </div>
+      <p class="code-info" id="codeInfo"></p>
+      <div class="code-scroll"><pre class="code-lines" id="codeLines" aria-hidden="true"></pre><pre class="code-body"><code id="codeBody"></code></pre></div>
+    </div>
+  </main>
+
+  <aside class="right" aria-label="Settings for the selected item">
+    <div class="props" id="props"></div>
+  </aside>
+</div>
+<div id="modalRoot"></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="generator.js"></script>
+<script src="templates.js"></script>
+<script src="highlight.js"></script>
+<script src="importer.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>

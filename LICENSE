@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Projects-me-design
+Copyright (c) 2026 project-tech-me
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,39 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Third-party components bundled with Pocket-Web-Studio:
+
+- Electron (MIT License, Copyright (c) Electron contributors and GitHub Inc.)
+- Chromium, included with Electron (BSD-style licences; see
+  LICENSES.chromium.html in the installed application folder)
+- IBM Plex Sans and IBM Plex Mono fonts (SIL Open Font License 1.1,
+  Copyright IBM Corp.), packaged by Fontsource
+
+Websites you create with Pocket-Web-Studio are your own work. The code
+Pocket-Web-Studio generates for your website is not covered by this licence and
+you may use, license and distribute it however you choose. Fonts that your
+website loads from Google Fonts are provided under their own open licences.
+
+-------------------------------------------------------------------------------
+
+Product Icon — All Rights Reserved
+
+Icon Artist: MJO-Art · workmjo@gmail.com
+
+The product Icon files are custom images created by MJO-Art for this project.
+These icons can not be altered or used without the express permission of the
+Artist.
+
+This covers the following files:
+
+- build/icon.png
+- build/icon.ico
+- renderer/logo.png
+
+and the copies of these images built into the Pocket-Web-Studio program and
+its browser version.
+
+These icon files are not covered by the MIT Licence in this document.

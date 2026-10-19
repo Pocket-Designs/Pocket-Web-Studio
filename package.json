@@ -1,0 +1,96 @@
+{
+  "name": "pocket-web-studio",
+  "productName": "Pocket-Web-Studio",
+  "version": "2.0.0",
+  "description": "A drag-and-drop website builder that writes standards-based HTML5, CSS and JavaScript for you.",
+  "main": "main.js",
+  "license": "MIT",
+  "author": {
+    "name": "project-tech-me",
+    "email": "project-tech-me@protonmail.com"
+  },
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac",
+    "test": "node test/generate.js"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "5.1.0",
+    "@fontsource/ibm-plex-sans": "5.1.0"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8",
+    "html-validate": "8.24.1",
+    "png2icons": "2.0.1",
+    "resedit": "2.0.3"
+  },
+  "build": {
+    "appId": "studio.pocket.web",
+    "productName": "Pocket-Web-Studio",
+    "copyright": "Copyright © 2026 project-tech-me",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "build/icon.png",
+      "LICENSE",
+      "node_modules/@fontsource/ibm-plex-sans/files/*latin-*",
+      "node_modules/@fontsource/ibm-plex-sans/*.css",
+      "node_modules/@fontsource/ibm-plex-mono/files/*latin-*",
+      "node_modules/@fontsource/ibm-plex-mono/*.css"
+    ],
+    "extraResources": [
+      {
+        "from": "LICENSE",
+        "to": "LICENSE.txt"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "license": "LICENSE"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Development",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "maintainer": "project-tech-me <project-tech-me@protonmail.com>",
+      "vendor": "project-tech-me"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg"
+      ]
+    },
+    "afterPack": "build/after-pack.js",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "fileAssociations": [
+      {
+        "ext": "pocketweb",
+        "name": "Pocket-Web-Studio website",
+        "description": "Pocket-Web-Studio website project",
+        "role": "Editor"
+      }
+    ]
+  }
+}
