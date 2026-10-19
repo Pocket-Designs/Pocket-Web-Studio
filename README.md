@@ -4,9 +4,14 @@ A drag-and-drop website builder for people who don't write code. Build pages vis
 
 ## What you can do
 
-- **Drag and drop.** Drag elements and ready-made sections from the left onto your page. A blue line shows where they will land. Drag the handle on any selected item to move it.
+- **Drag and drop.** Drag elements and ready-made sections from the left onto your page. A blue line shows where they will land. To rearrange your page, press on anything already on it — a picture, a card, a whole section — and drag it somewhere else.
 - **Type on the page.** Click any text to change it. Select words in a text box to make them bold, italic, a list or a link.
-- **Elements:** heading, text box, button, picture, line, space, gallery, slideshow, video (YouTube, Vimeo or your own file), map, scrolling text, card, quote, table, questions and answers, contact form, and your own HTML.
+- **Resize things.** Drag the round handle on the edge of a picture, card, gallery, table, text box and more to set its width, or use the Width slider. Drag the bottom handle of a space to set its height. Crop pictures to square, portrait, wide or circle shapes.
+- **Links.** Add a Link element, turn any heading, button, picture or card into a link, or select words in a text box and press Ctrl+K. Links can go to another page, a section of a page, a web address, an email address or a phone number.
+- **Drop-down menus.** Put pages under another page to make a drop-down in the header menu, and add extra menu links to other websites. Drop-downs work with the mouse, the keyboard and on phones.
+- **Spell checker.** Mistakes are underlined as you type; right-click for suggestions. Press F7 to check every page at once, change a word everywhere, or add it to your dictionary. The dictionary follows your website's language.
+- **Your own domain and free HTTPS.** A step-by-step guide gives you the exact DNS records for GitHub Pages, Netlify, Cloudflare Pages or your own server, checks whether your domain is pointing the right way, and shows how to switch on a free Let's Encrypt certificate (including ready-to-copy Caddy and Certbot commands). With a domain set, Publish also writes `sitemap.xml`, `robots.txt`, canonical links and, for GitHub Pages, the `CNAME` file.
+- **Elements:** heading, text box, button, link, picture, line, space, gallery, slideshow, video (YouTube, Vimeo or your own file), map, scrolling text, card, quote, table, questions and answers, contact form, and your own HTML.
 - **Ready-made sections:** big banner, picture and text, three cards, gallery, full-width slideshow, testimonial, call to action, questions, contact, scrolling banner, video, and empty 1, 2 or 3-column layouts.
 - **Colours and fonts.** Choose a colour scheme or set your own five colours. Every element's colour picker offers your scheme first, so the whole site changes together. There are nine font pairings, plus 19 fonts to mix.
 - **Movement.** Make elements fade, rise, slide or zoom in as visitors scroll. Keep pictures floating, pulsing, swaying or spinning. Slideshows can slowly zoom, banners can scroll and backgrounds can stay still while the page moves (parallax). Movement switches off for visitors who have asked their device for less motion.
@@ -38,7 +43,18 @@ npm start          # run the app
 npm test           # generate sample sites and check them against the HTML standard
 ```
 
-## Building an installer
+## Building the installers on GitHub
+
+The repository includes a GitHub Actions workflow (`.github/workflows/build.yml`), so you don't need Windows, a Mac or Wine to build:
+
+1. Push the project to a GitHub repository.
+2. Every push runs the tests, then builds the Windows installer and portable zip, the Linux AppImage and .deb, and the macOS .dmg on GitHub's own machines.
+3. Open the **Actions** tab, choose the latest **Build** run and download the files from **Artifacts**.
+4. To publish a release, push a version tag: `git tag v2.1.0 && git push --tags`. The installers are attached to a new GitHub Release automatically.
+
+The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper will warn the first time they are opened.
+
+## Building an installer on your own computer
 
 ```bash
 npm run dist:win     # Windows installer and portable zip, in dist/
@@ -57,6 +73,8 @@ Websites are saved as `.pocketweb` project files (older `.ezyweb` and `.weaver` 
 | Undo / Redo | Ctrl+Z / Ctrl+Y |
 | Duplicate selected item | Ctrl+D |
 | Delete selected item | Delete |
+| Add a link to selected words | Ctrl+K |
+| Check spelling on every page | F7 |
 | Edit / Preview / Code | Ctrl+1 / Ctrl+2 / Ctrl+3 |
 | Preview in your browser | F12 |
 | Publish | Ctrl+P |
@@ -77,6 +95,7 @@ renderer/
   highlight.js        Syntax colouring for the Code view
   styles.css          The editor's look
 test/generate.js      Generates sample sites and validates them
+.github/workflows/    Builds the installers on GitHub
 build/                App icon and the Windows build step
 ```
 

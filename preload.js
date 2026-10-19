@@ -2,7 +2,7 @@
 // Pocket-Web-Studio — safe bridge between the editor window and the main process.
 // Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
 
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 async function call(channel, ...args) {
   const r = await ipcRenderer.invoke(channel, ...args);
@@ -23,6 +23,12 @@ contextBridge.exposeInMainWorld('weaver', {
   setPreview: (files) => ipcRenderer.send('preview:set', files),
   setDirty: (d) => ipcRenderer.send('app:setDirty', !!d),
   closeNow: () => ipcRenderer.send('app:closeNow'),
+  spellLanguage: (lang) => call('spell:setLanguage', lang),
+  spellAddWord: (word) => call('spell:addWord', word),
+  spellEnabled: () => call('spell:enabled'),
+  isMisspelled: (word) => { try { return webFrame.isWordMisspelled(String(word)); } catch (e) { return false; } },
+  spellSuggestions: (word) => { try { return webFrame.getWordSuggestions(String(word)); } catch (e) { return []; } },
+  checkDomain: (domain) => call('dns:check', domain),
   onMenu: (cb) => ipcRenderer.on('menu', (_e, cmd) => cb(cmd)),
   onOpenFile: (cb) => ipcRenderer.on('open-file', (_e, p) => cb(p))
 });

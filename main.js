@@ -113,6 +113,8 @@ function createWindow() {
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: true }
   });
   if (s.maximized) win.maximize();
+  if (s.spellcheck === false) win.webContents.session.setSpellCheckerEnabled(false);
+  win.webContents.on('context-menu', (_e, p) => spellMenu(p));
   win.once('ready-to-show', () => win.show());
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
@@ -143,6 +145,35 @@ function createWindow() {
   win.on('closed', () => { win = null; });
 }
 
+/* ---------- spelling ---------- */
+function spellMenu(p) {
+  const wc = win && win.webContents;
+  if (!wc) return;
+  const t = [];
+  if (p.misspelledWord) {
+    const sugg = (p.dictionarySuggestions || []).slice(0, 6);
+    sugg.forEach(w => t.push({ label: w, click: () => wc.replaceMisspelling(w) }));
+    if (!sugg.length) t.push({ label: 'No spelling suggestions', enabled: false });
+    t.push({ label: 'Add “' + p.misspelledWord + '” to dictionary', click: () => wc.session.addWordToSpellCheckerDictionary(p.misspelledWord) });
+    t.push({ type: 'separator' });
+  }
+  if (p.isEditable) t.push({ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'pasteAndMatchStyle', label: 'Paste as plain text' }, { type: 'separator' }, { role: 'selectAll' });
+  else if (p.selectionText && p.selectionText.trim()) t.push({ role: 'copy' });
+  if (!t.length) return;
+  Menu.buildFromTemplate(t).popup({ window: win });
+}
+function setSpellLanguage(lang) {
+  if (!win || process.platform === 'darwin') return null; // macOS picks the language itself
+  const ses = win.webContents.session;
+  const avail = ses.availableSpellCheckerLanguages || [];
+  const want = String(lang || 'en').toLowerCase();
+  const base = want.split('-')[0];
+  const pick = avail.find(l => l.toLowerCase() === want) || avail.find(l => l.toLowerCase().split('-')[0] === base && /^(en-gb|fr-fr|de-de|es-es|it-it|pt-pt|nl-nl)$/i.test(l)) || avail.find(l => l.toLowerCase().split('-')[0] === base);
+  if (!pick) return null;
+  try { ses.setSpellCheckerLanguages([pick]); } catch (e) { return null; }
+  return pick;
+}
+
 function buildMenu() {
   const isMac = process.platform === 'darwin';
   const item = (label, cmd, accelerator) => ({ label, accelerator, click: () => send(cmd) });
@@ -168,7 +199,9 @@ function buildMenu() {
       { type: 'separator' },
       { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
       { type: 'separator' },
-      item('Duplicate', 'duplicate', 'CmdOrCtrl+D')
+      item('Duplicate', 'duplicate', 'CmdOrCtrl+D'),
+      { type: 'separator' },
+      item('Check Spelling…', 'spelling', 'F7')
     ] },
     { label: '&View', submenu: [
       item('Edit', 'view-edit', 'CmdOrCtrl+1'),
@@ -179,12 +212,17 @@ function buildMenu() {
       item('Tablet Size', 'dev-tablet'),
       item('Phone Size', 'dev-phone'),
       { type: 'separator' },
+      { label: 'Underline Spelling Mistakes', type: 'checkbox', checked: readSettings().spellcheck !== false, click: (mi) => {
+        if (win) win.webContents.session.setSpellCheckerEnabled(mi.checked);
+        writeSettings({ spellcheck: mi.checked });
+      } },
+      { type: 'separator' },
       { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'resetZoom' },
       { type: 'separator' },
       { role: 'togglefullscreen' },
       { role: 'toggleDevTools' }
     ] },
-    { label: '&Help', submenu: [item('About Pocket-Web-Studio', 'about'), item('Licence', 'licence')] }
+    { label: '&Help', submenu: [item('Domain Name && Free HTTPS Setup…', 'domain'), { type: 'separator' }, item('About Pocket-Web-Studio', 'about'), item('Licence', 'licence')] }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -196,6 +234,23 @@ function handle(channel, fn) {
     catch (err) { return { ok: false, error: err && err.message ? err.message : String(err) }; }
   });
 }
+
+handle('spell:setLanguage', async (lang) => setSpellLanguage(lang));
+handle('spell:addWord', async (word) => { if (win && word) win.webContents.session.addWordToSpellCheckerDictionary(String(word)); return true; });
+handle('spell:enabled', async () => !!(win && win.webContents.session.isSpellCheckerEnabled()));
+handle('dns:check', async (domain) => {
+  const dns = require('dns').promises;
+  const host = String(domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) throw new Error('That doesn’t look like a domain name.');
+  const apex = host.replace(/^www\./, '');
+  const www = 'www.' + apex;
+  const safe = async (fn) => { try { return await fn(); } catch (e) { return []; } };
+  const [a, aaaa, cname, wwwA, wwwCname] = await Promise.all([
+    safe(() => dns.resolve4(apex)), safe(() => dns.resolve6(apex)), safe(() => dns.resolveCname(apex)),
+    safe(() => dns.resolve4(www)), safe(() => dns.resolveCname(www))
+  ]);
+  return { apex, www, a, aaaa, cname, wwwA, wwwCname };
+});
 
 handle('app:init', async () => {
   const s = readSettings();

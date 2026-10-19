@@ -300,7 +300,13 @@ a { color: var(--c-link, var(--c-primary)); text-underline-offset: 0.18em; }
 .wv-logo img { height: 2.75rem; width: auto; }
 .wv-nav ul { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; margin: 0; padding: 0; list-style: none; }
 .wv-nav a { display: inline-block; padding-block: 0.35rem; color: inherit; font-weight: 600; text-decoration: none; border-bottom: 2px solid transparent; }
-.wv-nav a:hover, .wv-nav a[aria-current="page"] { border-bottom-color: var(--c-accent); }
+.wv-nav a:hover, .wv-nav a[aria-current="page"], .wv-nav .is-current > a { border-bottom-color: var(--c-accent); }
+.wv-nav li { position: relative; }
+.wv-nav .has-sub > a::after { content: ""; display: inline-block; width: 0.4em; height: 0.4em; margin-left: 0.45em; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; rotate: 45deg; translate: 0 -0.2em; }
+.wv-nav .wv-sub { display: none; position: absolute; top: 100%; left: -0.75rem; z-index: 60; min-width: 13rem; padding: 0.5rem; flex-direction: column; gap: 0; color: var(--h-fg); background: var(--h-bg); border-radius: var(--radius); box-shadow: 0 10px 30px rgb(0 0 0 / 0.15); }
+.wv-nav .has-sub:hover > .wv-sub, .wv-nav .has-sub:focus-within > .wv-sub { display: flex; }
+.wv-nav .wv-sub a { display: block; padding: 0.5rem 0.75rem; border-bottom: 0; border-radius: calc(var(--radius) * 0.6); white-space: nowrap; }
+.wv-nav .wv-sub a:hover, .wv-nav .wv-sub a[aria-current="page"] { background: color-mix(in srgb, currentColor 10%, transparent); }
 .wv-nav-toggle { display: none; align-items: center; gap: 0.6rem; padding: 0.5rem 0.85rem; font: inherit; font-weight: 600; color: inherit; background: none; border: 1.5px solid color-mix(in srgb, currentColor 30%, transparent); border-radius: var(--btn-radius); cursor: pointer; }
 .wv-burger, .wv-burger::before, .wv-burger::after { content: ""; display: block; width: 1.1rem; height: 2px; background: currentColor; border-radius: 2px; position: relative; }
 .wv-burger::before { position: absolute; top: -6px; }
@@ -310,6 +316,8 @@ a { color: var(--c-link, var(--c-primary)); text-underline-offset: 0.18em; }
   .js .wv-nav { display: none; flex-basis: 100%; padding-bottom: 0.75rem; }
   .js .wv-nav.is-open { display: block; }
   .wv-nav ul { flex-direction: column; }
+  .wv-nav .wv-sub { display: flex; position: static; min-width: 0; padding: 0 0 0 1rem; background: none; box-shadow: none; }
+  .wv-nav .has-sub > a::after { display: none; }
 }
 .wv-footer { background: var(--f-bg); color: var(--f-fg); --c-link: currentColor; padding-block: 2.5rem; font-size: 0.95rem; }
 .wv-footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem 2rem; }
@@ -341,6 +349,10 @@ a { color: var(--c-link, var(--c-primary)); text-underline-offset: 0.18em; }
 .wv-btn--outline:hover { background: color-mix(in srgb, currentColor 10%, transparent); filter: none; }
 .wv-btn--accent { color: var(--c-on-accent); background: var(--c-accent); border-color: var(--c-accent); }
 .wv-btn--sm { font-size: 0.875rem; }
+.wv-link a { font-weight: 700; text-decoration-thickness: 2px; text-underline-offset: 0.25em; }
+.wv-link a span[aria-hidden] { display: inline-block; transition: translate 0.15s ease; }
+.wv-link a:hover span[aria-hidden] { translate: 4px 0; }
+.wv-heading a { color: inherit; text-decoration-thickness: 2px; text-underline-offset: 0.2em; }
 .wv-btn--lg { font-size: 1.2rem; }
 
 /* ---------- Images and media ---------- */
@@ -519,9 +531,10 @@ function elementRules(site, el, o) {
     if (el.type === 'image') extra.push(sel + ' img { box-shadow: ' + SHADOW + '; }');
     else d.push('box-shadow: ' + SHADOW);
   }
-  if (st.width && st.width !== '100') {
+  const pct = Math.max(5, Math.min(100, Math.round(+st.width) || 100));
+  if (st.width && pct < 100) {
     d.push('width: 100%');
-    d.push('max-width: ' + (+st.width) + '%');
+    d.push('max-width: ' + pct + '%');
     extra.push('@media (max-width: 760px) { ' + sel + ' { max-width: 100%; } }');
   }
   if (el.type === 'gallery') {
@@ -531,6 +544,10 @@ function elementRules(site, el, o) {
     if (p.ratio === 'original') d.push('--ratio: auto');
   }
   if ((el.type === 'slideshow' || el.type === 'video' || el.type === 'map') && p.ratio && RATIOS[p.ratio]) d.push('--ratio: ' + RATIOS[p.ratio]);
+  const SHAPES = { square: '1 / 1', landscape: '4 / 3', portrait: '3 / 4', wide: '16 / 9', panorama: '21 / 9', circle: '1 / 1' };
+  if (el.type === 'image' && SHAPES[p.shape]) extra.push(sel + ' img { aspect-ratio: ' + SHAPES[p.shape] + '; object-fit: cover;' + (p.shape === 'circle' ? ' border-radius: 50%;' : '') + ' }');
+  if (el.type === 'card' && SHAPES[p.imageShape] && p.imageShape !== 'landscape') extra.push(sel + ' > img { aspect-ratio: ' + SHAPES[p.imageShape] + '; }');
+  if (el.type === 'spacer' && +p.height) d.push('height: ' + Math.max(4, Math.min(600, Math.round(+p.height))) + 'px');
   if (el.type === 'ticker') d.push('--speed: ' + ({ slow: '45s', normal: '28s', fast: '15s' }[p.speed || 'normal']));
   if (st.hideMobile) extra.push('@media (max-width: 760px) { ' + sel + ' { display: none; } }');
   const out = [];
@@ -764,7 +781,9 @@ function editPlaceholder(w, site, el, o, label, base) {
 const RENDER = {
   heading(w, site, el, o) {
     const lvl = Math.min(4, Math.max(1, +el.props.level || 2));
-    w.line('<h' + lvl + elAttrs(site, el, o, 'wv-heading') + ed(o, 'text', 'single') + '>' + textHtml(el.props.text) + '</h' + lvl + '>');
+    const href = !o.edit && linkHref(site, el.props.link, o.files);
+    const inner = href ? '<a href="' + escAttr(href) + '"' + (el.props.newTab ? ' target="_blank" rel="noopener"' : '') + '>' + textHtml(el.props.text) + '</a>' : textHtml(el.props.text);
+    w.line('<h' + lvl + elAttrs(site, el, o, 'wv-heading') + ed(o, 'text', 'single') + '>' + inner + '</h' + lvl + '>');
   },
   text(w, site, el, o) {
     const html = o.edit ? (el.props.html || '<p><br></p>') : rewriteRichLinks(site, el.props.html, o.files);
@@ -941,6 +960,14 @@ const RENDER = {
     w.line('<div class="wv-ticker-track" aria-hidden="true">' + new Array(8).fill('<span>' + esc(p.text) + '</span>').join('') + '</div>');
     w.close('</div>');
   },
+  link(w, site, el, o) {
+    const p = el.props;
+    const href = linkHref(site, p.link, o.files);
+    const arrow = p.arrow !== false ? ' <span aria-hidden="true">\u2192</span>' : '';
+    const text = '<span' + ed(o, 'text', 'single') + '>' + esc(p.text) + '</span>';
+    if (href || o.edit) w.line('<p' + elAttrs(site, el, o, 'wv-link') + '><a href="' + escAttr(href || '#') + '"' + (p.newTab ? ' target="_blank" rel="noopener"' : '') + '>' + text + arrow + '</a></p>');
+    else w.line('<p' + elAttrs(site, el, o, 'wv-link') + '>' + text + '</p>');
+  },
   divider(w, site, el, o) {
     w.line('<hr' + elAttrs(site, el, o, 'wv-divider wv-divider--' + (el.props.variant || 'line')) + '>');
   },
@@ -984,6 +1011,25 @@ function renderSection(w, site, s, o) {
 }
 
 function navPages(site) { return site.pages.filter(p => p.showInNav !== false); }
+// Menu items with one level of drop-downs: pages placed under another page, plus extra menu links.
+function navTree(site) {
+  const pages = navPages(site);
+  const byId = new Map(pages.map(p => [p.id, p]));
+  const isChild = p => !!(p.parent && p.parent !== p.id && byId.has(p.parent) && !(byId.get(p.parent).parent && byId.has(byId.get(p.parent).parent)));
+  const top = [], slots = new Map();
+  pages.forEach(p => { if (!isChild(p)) { const t = { page: p, children: [] }; top.push(t); slots.set(p.id, t); } });
+  pages.forEach(p => { if (isChild(p) && slots.has(p.parent)) slots.get(p.parent).children.push({ page: p }); });
+  ((site.header && site.header.menuLinks) || []).filter(l => l && l.label).forEach(l => {
+    const item = { link: l, children: [] };
+    if (l.parent && slots.has(l.parent)) slots.get(l.parent).children.push(item); else top.push(item);
+  });
+  return top;
+}
+function navAnchor(site, item, page, files) {
+  if (item.page) return '<a href="' + files[item.page.id] + '"' + (item.page === page ? ' aria-current="page"' : '') + '>' + esc(item.page.name) + '</a>';
+  const href = linkHref(site, item.link.link, files) || '#';
+  return '<a href="' + escAttr(href) + '"' + (item.link.newTab ? ' target="_blank" rel="noopener"' : '') + '>' + esc(item.link.label) + '</a>';
+}
 
 function renderHeader(w, site, page, o) {
   const h = site.header;
@@ -997,12 +1043,21 @@ function renderHeader(w, site, page, o) {
   const logoImg = h.logoImage ? imgTag(Object.assign({}, o, { eager: true }), h.logoImage, h.logoText ? '' : site.name) : '';
   const logoText = h.logoText ? '<span' + ed(o, 'logoText', 'single') + '>' + esc(h.logoText) + '</span>' : '';
   w.line('<a class="wv-logo" href="' + files[site.pages[0].id] + '"' + (!h.logoText && !h.logoImage ? ' aria-label="' + escAttr(site.name) + '"' : '') + '>' + logoImg + (logoText || (!logoImg ? esc(site.name) : '')) + '</a>');
-  const nav = navPages(site);
+  const nav = navTree(site);
   if (nav.length) {
     w.line('<button class="wv-nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav"><span class="wv-burger" aria-hidden="true"></span>Menu</button>');
     w.open('<nav id="site-nav" class="wv-nav" aria-label="Main">');
     w.open('<ul>');
-    nav.forEach(p => w.line('<li><a href="' + files[p.id] + '"' + (p === page ? ' aria-current="page"' : '') + '>' + esc(p.name) + '</a></li>'));
+    nav.forEach(item => {
+      if (!item.children || !item.children.length) { w.line('<li>' + navAnchor(site, item, page, files) + '</li>'); return; }
+      const current = item.children.some(c => c.page === page);
+      w.open('<li class="has-sub' + (current ? ' is-current' : '') + '">');
+      w.line(navAnchor(site, item, page, files));
+      w.open('<ul class="wv-sub">');
+      item.children.forEach(c => w.line('<li>' + navAnchor(site, c, page, files) + '</li>'));
+      w.close('</ul>');
+      w.close('</li>');
+    });
     w.close('</ul>');
     w.close('</nav>');
   }
@@ -1059,6 +1114,14 @@ function pageDocument(site, page, o, inc) {
   w.line('<meta property="og:title" content="' + escAttr(title) + '">');
   if (desc) w.line('<meta property="og:description" content="' + escAttr(desc) + '">');
   w.line('<meta property="og:type" content="website">');
+  const base = siteUrl(site);
+  if (base && o.absolute) {
+    const url = base + '/' + (o.files[page.id] === 'index.html' ? '' : o.files[page.id]);
+    w.line('<meta property="og:url" content="' + escAttr(url) + '">');
+    const pic = firstPicture(page);
+    if (pic) w.line('<meta property="og:image" content="' + escAttr(isUrl(pic) ? pic : base + '/' + o.assetUrl(pic)) + '">');
+    w.line('<link rel="canonical" href="' + escAttr(url) + '">');
+  }
   w.line('<meta name="theme-color" content="' + escAttr(site.theme.colors.primary) + '">');
   w.line('<meta name="generator" content="Pocket-Web-Studio">');
   if (site.settings && site.settings.favicon) w.line('<link rel="icon" href="' + escAttr(o.assetUrl(site.settings.favicon)) + '">');
@@ -1084,6 +1147,24 @@ function pageDocument(site, page, o, inc) {
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
 
+function cleanDomain(d) {
+  return String(d || '').trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/[/?#].*$/, '').replace(/\.$/, '');
+}
+function siteUrl(site) {
+  const d = cleanDomain(site.settings && site.settings.domain);
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) ? 'https://' + d : '';
+}
+function firstPicture(page) {
+  for (const s of page.sections) {
+    if (s.bgImage) return s.bgImage;
+    for (const c of s.columns) for (const el of c.elements) {
+      const p = el.props || {};
+      const src = p.src || p.image || (p.slides && p.slides[0] && p.slides[0].src) || (p.images && p.images[0] && p.images[0].src);
+      if (src && !/\.svg$/i.test(src)) return src;
+    }
+  }
+  return null;
+}
 function exportOpts(o) {
   const info = o.assetInfo || (() => null);
   return {
@@ -1091,7 +1172,8 @@ function exportOpts(o) {
     assetInfo: info,
     assetUrl: n => exportPath(n, info(n)),
     cssAssetUrl: n => isUrl(n) ? n : '../' + exportPath(n, info(n)),
-    year: o.year
+    year: o.year,
+    absolute: true
   };
 }
 
@@ -1105,6 +1187,14 @@ function generateSite(site, o) {
   site.pages.forEach(p => { out[files[p.id]] = pageDocument(site, p, o, { cssHref: 'css/style.css', jsHref: js ? 'js/site.js' : null }); });
   out['css/style.css'] = buildCss(site, o);
   if (js) out['js/site.js'] = js;
+  const base = siteUrl(site);
+  if (base) {
+    const day = new Date().toISOString().slice(0, 10);
+    out['sitemap.xml'] = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+      site.pages.map(p => '  <url><loc>' + esc(base + '/' + (files[p.id] === 'index.html' ? '' : files[p.id])) + '</loc><lastmod>' + day + '</lastmod></url>').join('\n') + '\n</urlset>\n';
+    out['robots.txt'] = 'User-agent: *\nAllow: /\n\nSitemap: ' + base + '/sitemap.xml\n';
+    if (site.settings.host === 'github') out['CNAME'] = cleanDomain(site.settings.domain) + '\n';
+  }
   const assets = {};
   usedAssets(site).filter(n => !isUrl(n)).forEach(n => { assets[exportPath(n, o.assetInfo(n))] = n; });
   return { files: out, assets };
@@ -1129,6 +1219,7 @@ function checkSite(site, assetInfo) {
   const issues = [];
   const files = pageFiles(site);
   const add = (level, text, page, id) => issues.push({ level, text, pageId: page && page.id, id: id || null });
+  if (!siteUrl(site)) issues.push({ level: 'info', text: 'No website address (domain) is set. Add one in Design › Website so search engines get a sitemap and the right links.', pageId: null, id: null, action: 'domain' });
   site.pages.forEach(page => {
     if (!page.sections.some(s => s.columns.some(c => c.elements.length))) add('warn', `The page “${page.name}” has nothing on it yet.`, page);
     if (!page.description) add('info', `The page “${page.name}” has no description for search engines.`, page);
@@ -1159,7 +1250,7 @@ function checkSite(site, assetInfo) {
 return {
   THEME_KEYS, THEME_LABELS, PALETTES, FONTS, FONT_PAIRS, SIZES, LAYOUTS, RATIOS,
   generateSite, renderEditPage, renderPreviewPage, buildCss, buildJs, checkSite,
-  pageFiles, pageTitle, usedAssets, exportPath, isUrl, fontsHref, videoEmbed, slugify,
+  pageFiles, pageTitle, usedAssets, exportPath, isUrl, navTree, siteUrl, cleanDomain, fontsHref, videoEmbed, slugify,
   colorCss, resolveHex, onColor, contrast, luminance, validHex, mixHex, esc, escAttr
 };
 }));

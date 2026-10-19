@@ -92,6 +92,7 @@ const ICON = {
   warn: P('<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17v.1"/>'),
   info: P('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.1"/>'),
   check: P('<path d="m5 12 5 5 9-10"/>'),
+  globe: P('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/>'),
   folder: P('<path d="M3 6v13h18V8h-9l-2-2z"/>'),
   eye: P('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
   code: P('<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>'),
@@ -258,6 +259,7 @@ function normalizeSite(s) {
   s.header = Object.assign({}, base.header, s.header || {});
   s.footer = Object.assign({}, base.footer, s.footer || {});
   s.settings = Object.assign({}, base.settings, s.settings || {});
+  if (!Array.isArray(s.header.menuLinks)) s.header.menuLinks = [];
   if (!Array.isArray(s.pages) || !s.pages.length) s.pages = base.pages;
   s.pages.forEach(p => {
     p.sections = p.sections || [];
@@ -366,6 +368,13 @@ html { scroll-behavior: auto !important; }
 #wv-ui .wv-pop b { font-weight: 600; }
 #wv-ui .wv-pop select, #wv-ui .wv-pop input { all: unset; box-sizing: border-box; width: 100%; padding: 7px 9px; border: 1px solid #c9cfdb; border-radius: 6px; background: #fff; color: #1b2130; font: inherit; }
 #wv-ui .wv-pop select { appearance: auto; }
+#wv-ui .wv-rs { position: absolute; box-sizing: border-box; width: 16px; height: 16px; margin: -8px 0 0 -8px; border-radius: 50%; background: #fff; border: 3px solid #2f5bea; box-shadow: 0 1px 5px rgba(20, 30, 70, 0.35); cursor: ew-resize; touch-action: none; }
+#wv-ui .wv-rs.v { cursor: ns-resize; }
+#wv-ui .wv-rs:hover { background: #2f5bea; }
+#wv-float { position: fixed; z-index: 2147483600; pointer-events: none; padding: 5px 10px; border-radius: 6px; background: #2f5bea; color: #fff; font: 600 12px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif; box-shadow: 0 4px 14px rgba(20, 30, 70, 0.3); white-space: nowrap; }
+html.wv-pdrag, html.wv-pdrag * { user-select: none !important; -webkit-user-select: none !important; cursor: grabbing !important; }
+html.wv-presize, html.wv-presize * { user-select: none !important; -webkit-user-select: none !important; }
+.wv-dragging { opacity: 0.35; }
 #wv-ui .wv-pop .row { display: flex; gap: 6px; justify-content: flex-end; }
 #wv-ui .wv-pop button { all: unset; padding: 7px 12px; border-radius: 6px; border: 1px solid #c9cfdb; cursor: pointer; font-weight: 600; }
 #wv-ui .wv-pop button.primary { background: #2f5bea; border-color: #2f5bea; color: #fff; }
@@ -394,6 +403,10 @@ function onCanvasLoad() {
   d.addEventListener('keydown', onCanvasKey);
   d.addEventListener('paste', onCanvasPaste);
   d.addEventListener('focusout', onCanvasFocusOut);
+  d.addEventListener('pointerdown', onCanvasPointerDown);
+  d.addEventListener('pointermove', onCanvasPointerMove);
+  d.addEventListener('pointerup', onCanvasPointerUp);
+  d.addEventListener('pointercancel', () => endPointerDrag(false));
   d.addEventListener('dragstart', onCanvasDragStart);
   d.addEventListener('dragover', onCanvasDragOver);
   d.addEventListener('dragleave', e => { if (!e.relatedTarget) hideDropLine(); });
@@ -501,12 +514,148 @@ function buildToolbar(n, ui) {
   left = Math.max(sx + 4, Math.min(left, sx + vw - tw - 6));
   tb.style.top = top + 'px';
   tb.style.left = left + 'px';
+  if (sel.kind === 'el') addResizeHandles(n, ui, H);
+}
+
+/* ---------- resize handles ---------- */
+
+function addResizeHandles(n, ui, H) {
+  const f = findElement(sel.id);
+  if (!f) return;
+  const d = cdoc(), win = d.defaultView, r = n.getBoundingClientRect();
+  const sx = win.scrollX, sy = win.scrollY;
+  if ((STYLE_SUPPORT[f.el.type] || []).includes('width')) {
+    const right = (f.el.style.align || 'left') !== 'right';
+    const hd = H('span', { class: 'wv-rs', title: 'Drag to change the width', 'data-resize': 'width' });
+    hd.style.left = ((right ? r.right : r.left) + sx) + 'px';
+    hd.style.top = (r.top + sy + Math.min(r.height / 2, 120)) + 'px';
+    ui.appendChild(hd);
+  }
+  if (f.el.type === 'spacer') {
+    const hd = H('span', { class: 'wv-rs v', title: 'Drag to change the height', 'data-resize': 'height' });
+    hd.style.left = (r.left + sx + r.width / 2) + 'px';
+    hd.style.top = (r.bottom + sy) + 'px';
+    ui.appendChild(hd);
+  }
+}
+function floatLabel(text, x, y) {
+  const d = cdoc();
+  let f = d.getElementById('wv-float');
+  if (!f) { f = d.createElement('div'); f.id = 'wv-float'; d.body.appendChild(f); }
+  f.textContent = text;
+  f.style.left = (x + 14) + 'px';
+  f.style.top = (y + 14) + 'px';
+}
+function removeFloat() { const d = cdoc(); const f = d && d.getElementById('wv-float'); if (f) f.remove(); }
+
+/* ---------- drag items straight on the page (no grip needed) ---------- */
+
+let pdrag = null, swallowClick = false;
+function onCanvasPointerDown(e) {
+  if (e.button !== 0 || drag || pdrag) return;
+  const t = e.target.nodeType === 1 ? e.target : e.target.parentElement;
+  if (!t) return;
+  const rs = t.closest('[data-resize]');
+  if (rs && sel && sel.kind === 'el') {
+    const f = findElement(sel.id), n = nodeFor(sel);
+    if (!f || !n) return;
+    e.preventDefault();
+    const col = n.closest('[data-wv-col]') || n.parentElement;
+    pdrag = { resize: rs.dataset.resize, el: f.el, colRect: col.getBoundingClientRect(), startY: e.clientY, startH: n.getBoundingClientRect().height, active: true };
+    cdoc().documentElement.classList.add('wv-presize');
+    return;
+  }
+  if (t.closest('#wv-ui') || t.closest('input,select,textarea,button:not([data-wv])')) return;
+  const elNode = t.closest('[data-wv]');
+  let payload, node;
+  if (elNode) {
+    // Inside a selected item, a press-and-drag selects words instead of moving it.
+    if (sel && sel.kind === 'el' && sel.id === elNode.dataset.wv && t.closest('[contenteditable]')) return;
+    payload = { kind: 'move-el', id: elNode.dataset.wv }; node = elNode;
+  } else {
+    const sec = t.closest('[data-wv-section]');
+    if (!sec) return;
+    payload = { kind: 'move-section', id: sec.dataset.wvSection }; node = sec;
+  }
+  pdrag = { payload, node, x: e.clientX, y: e.clientY, active: false };
+}
+function onCanvasPointerMove(e) {
+  if (!pdrag) return;
+  const d = cdoc();
+  if (pdrag.resize) { e.preventDefault(); pdrag.lastX = e.clientX; pdrag.lastY = e.clientY; if (!pdrag.raf) pdrag.raf = d.defaultView.requestAnimationFrame(doResize); return; }
+  if (!pdrag.active) {
+    if (Math.hypot(e.clientX - pdrag.x, e.clientY - pdrag.y) < 6) return;
+    pdrag.active = true;
+    drag = pdrag.payload;
+    const a = d.activeElement; if (a && a.isContentEditable) a.blur();
+    try { d.getSelection().removeAllRanges(); } catch (err) { /* ignore */ }
+    d.documentElement.classList.add('wv-pdrag');
+    pdrag.node.classList.add('wv-dragging');
+    const ui = d.getElementById('wv-ui'); if (ui) ui.innerHTML = '';
+    const f = pdrag.payload.kind === 'move-el' && findElement(pdrag.payload.id);
+    pdrag.label = 'Moving ' + (f ? (T.LABELS[f.el.type] || 'item').toLowerCase() : 'section');
+    pdrag.timer = setInterval(autoScroll, 30);
+  }
+  e.preventDefault();
+  pdrag.lastX = e.clientX; pdrag.lastY = e.clientY;
+  floatLabel(pdrag.label, e.clientX, e.clientY);
+  dropTarget = computeTarget(pdrag.payload, e.clientX, e.clientY);
+  showDropLine(dropTarget, pdrag.payload);
+}
+function autoScroll() {
+  if (!pdrag || !pdrag.active) return;
+  const win = cdoc().defaultView, y = pdrag.lastY, vh = win.innerHeight, edge = 50;
+  let dy = 0;
+  if (y < edge) dy = -Math.ceil((edge - y) / 3);
+  else if (y > vh - edge) dy = Math.ceil((y - (vh - edge)) / 3);
+  if (!dy) return;
+  win.scrollBy(0, dy);
+  dropTarget = computeTarget(pdrag.payload, pdrag.lastX, y);
+  showDropLine(dropTarget, pdrag.payload);
+}
+function doResize() {
+  if (!pdrag || !pdrag.resize) return;
+  pdrag.raf = 0;
+  const el = pdrag.el, x = pdrag.lastX, y = pdrag.lastY, c = pdrag.colRect;
+  if (pdrag.resize === 'width') {
+    const align = el.style.align || 'left';
+    let frac = align === 'center' ? 2 * Math.abs(x - (c.left + c.width / 2)) / c.width : align === 'right' ? (c.right - x) / c.width : (x - c.left) / c.width;
+    const pct = Math.max(10, Math.min(100, Math.round(frac * 20) * 5));
+    floatLabel('Width ' + pct + '%', x, y);
+    if (String(pct) !== String(el.style.width || '100')) { el.style.width = String(pct); changed({ key: 'el:' + el.id + ':width' }); }
+  } else {
+    const hpx = Math.max(4, Math.min(600, Math.round((pdrag.startH + y - pdrag.startY) / 8) * 8));
+    floatLabel('Height ' + hpx + ' px', x, y);
+    if (hpx !== +el.props.height) { el.props.height = hpx; changed({ key: 'el:' + el.id + ':height' }); }
+  }
+}
+async function onCanvasPointerUp() {
+  if (!pdrag) return;
+  if (pdrag.resize) { endPointerDrag(false); renderPanel(); return; }
+  if (!pdrag.active) { pdrag = null; return; }
+  const payload = pdrag.payload, target = dropTarget;
+  endPointerDrag(true);
+  if (target) await applyDrop(payload, target); else renderCanvas();
+}
+function endPointerDrag(swallow) {
+  const d = cdoc();
+  if (pdrag) {
+    clearInterval(pdrag.timer);
+    if (pdrag.node) pdrag.node.classList.remove('wv-dragging');
+    if (pdrag.active && swallow) { swallowClick = true; setTimeout(() => { swallowClick = false; }, 0); }
+  }
+  pdrag = null;
+  if (d) d.documentElement.classList.remove('wv-pdrag', 'wv-presize');
+  removeFloat();
+  endDrag();
+  applySelection();
 }
 
 function onCanvasClick(e) {
   const t = e.target.nodeType === 1 ? e.target : e.target.parentElement;
   if (!t || t.closest('#wv-ui')) return;
   if (t.closest('a')) e.preventDefault();
+  if (swallowClick) { swallowClick = false; return; }
   if (t.closest('summary') && !t.closest('[contenteditable]')) e.preventDefault();
   const elNode = t.closest('[data-wv]');
   if (elNode) { if (!sel || sel.kind !== 'el' || sel.id !== elNode.dataset.wv) select({ kind: 'el', id: elNode.dataset.wv }); return; }
@@ -616,7 +765,14 @@ function onCanvasKey(e) {
   const t = e.target;
   const editing = t && t.isContentEditable;
   if (editing && e.key === 'Enter' && t.hasAttribute('data-wv-single')) { e.preventDefault(); t.blur(); return; }
+  if (e.key === 'Escape' && pdrag) { e.preventDefault(); endPointerDrag(true); return; }
   if (e.key === 'Escape') { if (editing) t.blur(); else select(null); return; }
+  if (editing && t.hasAttribute('data-wv-rich') && (e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const tb = cdoc().querySelector('#wv-ui .wv-tb');
+    if (tb) openLinkPopover(tb);
+    return;
+  }
   if (t && t.closest && t.closest('#wv-ui')) return;
   if (!editing && (e.key === 'Delete' || e.key === 'Backspace') && sel && (sel.kind === 'el' || sel.kind === 'section')) { e.preventDefault(); deleteSel(); return; }
   handleShortcut(e, editing);
@@ -1087,18 +1243,19 @@ function setEl(el, fn, key, o) { fn(); changed(Object.assign({ key: key ? 'el:' 
 const SIZE_OPTS = [['', 'Normal'], ['sm', 'Small'], ['md', 'Medium'], ['lg', 'Large'], ['xl', 'Extra large'], ['2xl', 'Huge'], ['3xl', 'Giant'], ['4xl', 'Massive']];
 const STYLE_SUPPORT = {
   heading: ['align', 'size', 'color', 'bg', 'padding', 'radius'],
-  text: ['align', 'size', 'color', 'bg', 'padding', 'radius'],
+  text: ['align', 'width', 'size', 'color', 'bg', 'padding', 'radius'],
   button: ['align'],
+  link: ['align', 'size', 'color'],
   image: ['align', 'width', 'radius', 'shadow'],
-  gallery: ['radius'],
+  gallery: ['width', 'align', 'radius'],
   slideshow: ['width', 'align', 'radius', 'shadow'],
   video: ['width', 'align', 'radius', 'shadow'],
   map: ['width', 'align', 'radius', 'shadow'],
   ticker: ['color', 'bg', 'size', 'radius'],
-  card: ['color', 'bg', 'radius', 'shadow'],
-  quote: ['align', 'size', 'color', 'bg', 'padding', 'radius'],
-  table: ['size', 'color', 'bg', 'padding', 'radius'],
-  faq: ['size', 'color', 'bg', 'padding', 'radius'],
+  card: ['width', 'align', 'color', 'bg', 'radius', 'shadow'],
+  quote: ['align', 'width', 'size', 'color', 'bg', 'padding', 'radius'],
+  table: ['width', 'align', 'size', 'color', 'bg', 'padding', 'radius'],
+  faq: ['width', 'align', 'size', 'color', 'bg', 'padding', 'radius'],
   form: ['width', 'align', 'color', 'bg', 'padding', 'radius'],
   divider: ['align', 'width', 'color'],
   spacer: [],
@@ -1151,7 +1308,8 @@ function pagePanel() {
       field('Page name', inputCtl(page.name, v => { page.name = v || 'Untitled'; changed({ key: 'page:name', pages: true }); }), 'Shown in the menu.'),
       field('Browser tab title', inputCtl(page.title, v => { page.title = v; changed({ key: 'page:title', render: false }); }, { placeholder: Gen.pageTitle(site, Object.assign({}, page, { title: '' })) }), 'Leave blank to use the page name and site name.'),
       field('Description for search engines', h('div', null, desc, count)),
-      toggleCtl('Show this page in the menu', page.showInNav !== false, v => { page.showInNav = v; changed({ pages: true }); })),
+      toggleCtl('Show this page in the menu', page.showInNav !== false, v => { page.showInNav = v; changed({ pages: true, panel: true }); }),
+      page.showInNav !== false && !isHome ? field('Place in the menu', selectCtl([['', 'Top level'], ...site.pages.filter(p => p !== page && p !== site.pages[0] && !p.parent && p.showInNav !== false && !site.pages.some(c => c.parent === page.id)).map(p => [p.id, 'In the drop-down under “' + p.name + '”'])], page.parent || '', v => { page.parent = v || undefined; if (!v) delete page.parent; changed({ pages: true }); }), site.pages.some(c => c.parent === page.id) ? 'Other pages sit under this one, so it stays at the top level.' : 'Put this page in a drop-down list under another page.') : null),
     group('Page actions',
       h('div', { class: 'btn-row' },
         !isHome ? h('button', { type: 'button', class: 'btn sm', onclick: () => makeHome(page) }, icon('home'), 'Make home page') : null,
@@ -1231,7 +1389,14 @@ function listEditor(el, listKey, opts) {
 const CONTENT = {
   heading: el => [
     field('Heading', inputCtl(el.props.text, v => setEl(el, () => { el.props.text = v; }, 'text'))),
-    field('Importance', segCtl([1, 2, 3, 4].map(n => ({ v: n, label: 'H' + n, title: ['Main page title (use once per page)', 'Section heading', 'Sub-heading', 'Small heading'][n - 1] })), +el.props.level || 2, v => setEl(el, () => { el.props.level = v; })), 'H1 is the page’s main title. Use H2 for sections and H3 or H4 below them. Search engines and screen readers rely on this order.')
+    field('Importance', segCtl([1, 2, 3, 4].map(n => ({ v: n, label: 'H' + n, title: ['Main page title (use once per page)', 'Section heading', 'Sub-heading', 'Small heading'][n - 1] })), +el.props.level || 2, v => setEl(el, () => { el.props.level = v; })), 'H1 is the page’s main title. Use H2 for sections and H3 or H4 below them. Search engines and screen readers rely on this order.'),
+    field('Make the heading a link to', linkCtl(el.props.link, el.props.newTab, (l, t) => setEl(el, () => { el.props.link = l; el.props.newTab = t; }, 'link')), 'Optional. Leave as “Nowhere yet” for a plain heading.')
+  ],
+  link: el => [
+    field('Link text', inputCtl(el.props.text, v => setEl(el, () => { el.props.text = v; }, 'text'))),
+    field('Goes to', linkCtl(el.props.link, el.props.newTab, (l, t) => setEl(el, () => { el.props.link = l; el.props.newTab = t; }, 'link'))),
+    toggleCtl('Show an arrow after the text', el.props.arrow !== false, v => setEl(el, () => { el.props.arrow = v; })),
+    h('p', { class: 'hint' }, 'To link words inside a paragraph, select them in a Text box and press the link button (or Ctrl+K).')
   ],
   text: () => [h('div', { class: 'tip' }, icon('pencil'), h('p', null, 'Click the text on the page to type. Select words, then use the toolbar above the text box for bold, italic, links and lists.'))],
   button: el => [
@@ -1243,6 +1408,7 @@ const CONTENT = {
   image: el => [
     imageCtl(el.props.src, v => setEl(el, () => { el.props.src = v; }, null, { panel: true })),
     field('Describe the picture', inputCtl(el.props.alt, v => setEl(el, () => { el.props.alt = v; }, 'alt', { render: false }), { placeholder: 'e.g. A loaf of sourdough on a wooden board' }), 'Read aloud to people who can’t see the picture. Search engines use it too.'),
+    field('Shape', segCtl(SHAPE_OPTS, el.props.shape || '', v => setEl(el, () => { el.props.shape = v; })), 'Crops the picture to a shape. “Original” keeps it as taken.'),
     field('Caption', inputCtl(el.props.caption, v => setEl(el, () => { el.props.caption = v; }, 'caption'), { placeholder: 'Optional text under the picture' })),
     field('When clicked, go to', linkCtl(el.props.link, el.props.newTab, (l, t) => setEl(el, () => { el.props.link = l; el.props.newTab = t; }, 'link')))
   ],
@@ -1291,6 +1457,7 @@ const CONTENT = {
   card: el => [
     imageCtl(el.props.image, v => setEl(el, () => { el.props.image = v; }, null, { panel: true }), { removable: true }),
     el.props.image ? field('Describe the picture', inputCtl(el.props.alt, v => setEl(el, () => { el.props.alt = v; }, 'alt', { render: false }))) : null,
+    el.props.image ? field('Picture shape', segCtl(SHAPE_OPTS.filter(o => o.v !== 'circle').map(o => o.v === '' ? { v: '', label: 'Landscape' } : o).filter(o => o.v !== 'landscape'), el.props.imageShape || '', v => setEl(el, () => { el.props.imageShape = v; }))) : null,
     field('Title', inputCtl(el.props.title, v => setEl(el, () => { el.props.title = v; }, 'title'))),
     field('Text', inputCtl(el.props.text, v => setEl(el, () => { el.props.text = v; }, 'text'), { multiline: true, rows: 3 })),
     field('Button text', inputCtl(el.props.buttonText, v => setEl(el, () => { el.props.buttonText = v; }, 'btn'), { placeholder: 'Leave empty for no button' })),
@@ -1342,20 +1509,31 @@ const CONTENT = {
     ];
   },
   divider: el => [field('Style', segCtl([{ v: 'line', label: 'Line' }, { v: 'dashed', label: 'Dashed' }, { v: 'dotted', label: 'Dotted' }, { v: 'short', label: 'Short' }], el.props.variant || 'line', v => setEl(el, () => { el.props.variant = v; })))],
-  spacer: el => [field('Height', segCtl([{ v: 'sm', label: 'S' }, { v: 'md', label: 'M' }, { v: 'lg', label: 'L' }, { v: 'xl', label: 'XL' }], el.props.size || 'md', v => setEl(el, () => { el.props.size = v; })))],
+  spacer: el => [
+    field('Height', segCtl([{ v: 'sm', label: 'S' }, { v: 'md', label: 'M' }, { v: 'lg', label: 'L' }, { v: 'xl', label: 'XL' }], el.props.height ? null : (el.props.size || 'md'), v => setEl(el, () => { el.props.size = v; el.props.height = 0; }, null, { panel: true }))),
+    field('Exact height', rangeCtl(4, 600, 4, +el.props.height || ({ sm: 16, md: 40, lg: 80, xl: 128 }[el.props.size || 'md']), v => setEl(el, () => { el.props.height = v; }, 'height'), v => v + ' px'), 'Or drag the handle at the bottom of the space on the page.')
+  ],
   html: el => [
     field('Your HTML', inputCtl(el.props.code, v => setEl(el, () => { el.props.code = v; }, 'code'), { multiline: true, rows: 10, mono: true })),
     h('div', { class: 'tip warn' }, icon('warn'), h('p', null, 'For code from booking systems, newsletters and similar services. Scripts only run in Preview and on your published site.'))
   ]
 };
 
+function widthCtl(el) {
+  const st = el.style;
+  const cur = Math.max(10, Math.min(100, Math.round(+st.width || 100)));
+  const r = rangeCtl(10, 100, 5, cur, v => setEl(el, () => { st.width = String(v); }, 'width'), v => v + '%');
+  const presets = segCtl([{ v: 25, label: '¼' }, { v: 50, label: '½' }, { v: 75, label: '¾' }, { v: 100, label: 'Full' }], [25, 50, 75, 100].includes(cur) ? cur : null, v => setEl(el, () => { st.width = String(v); }, null, { panel: true }));
+  return h('div', { class: 'width-ctl' }, r, presets);
+}
+const SHAPE_OPTS = [{ v: '', label: 'Original' }, { v: 'square', label: 'Square' }, { v: 'landscape', label: 'Landscape' }, { v: 'portrait', label: 'Portrait' }, { v: 'wide', label: 'Wide' }, { v: 'circle', label: 'Circle' }];
 function stylePanel(el) {
   const sup = STYLE_SUPPORT[el.type] || [];
   const st = el.style;
   const s = (fn, key) => setEl(el, fn, key);
   const out = [];
   if (sup.includes('align')) out.push(field('Line up', segCtl([{ v: 'left', icon: 'left', title: 'Left' }, { v: 'center', icon: 'center', title: 'Centre' }, { v: 'right', icon: 'right', title: 'Right' }], st.align || 'left', v => s(() => { st.align = v; }), { cls: 'icons' })));
-  if (sup.includes('width')) out.push(field('Width', segCtl([{ v: '25', label: '¼' }, { v: '50', label: '½' }, { v: '75', label: '¾' }, { v: '100', label: 'Full' }], st.width || '100', v => s(() => { st.width = v; }))));
+  if (sup.includes('width')) out.push(field('Width', widthCtl(el), 'Drag the round handle on the right edge of the item on the page to resize it there too.'));
   if (sup.includes('size')) out.push(field('Text size', selectCtl(SIZE_OPTS, st.size || '', v => s(() => { st.size = v; }))));
   if (sup.includes('color')) out.push(field('Text colour', colorCtl(st.color, v => s(() => { st.color = v; }), { noneLabel: 'Automatic' })));
   if (sup.includes('bg')) out.push(field('Background', colorCtl(st.bg, v => s(() => { st.bg = v; }))));
@@ -1395,8 +1573,23 @@ function headerPanel() {
     group('Colours',
       field('Background', colorCtl(hd.bg, v => s(() => { hd.bg = v; }), { none: false })),
       field('Text', colorCtl(hd.color, v => s(() => { hd.color = v; }), { noneLabel: 'Automatic' }))),
-    h('div', { class: 'tip' }, icon('pages'), h('p', null, 'The menu lists your pages. Add, rename and reorder pages in the Pages tab on the left.'))
+    group('Extra menu links', menuLinksEditor()),
+    h('div', { class: 'tip' }, icon('pages'), h('p', null, 'The menu lists your pages. Add, rename and reorder pages in the Pages tab on the left. To make a drop-down, choose a page and set “Place in the menu”.'))
   );
+}
+function menuLinksEditor() {
+  const list = site.header.menuLinks = site.header.menuLinks || [];
+  const tops = site.pages.filter(p => !p.parent && p.showInNav !== false);
+  const s = (fn, key, o) => { fn(); changed(Object.assign({ key: key ? 'header:ml:' + key : null }, o || {})); };
+  return h('div', { class: 'qa-list' },
+    h('p', { class: 'hint' }, 'Add links that aren’t your own pages — a booking site, a shop, social media — to the menu or to a drop-down.'),
+    list.map((m, i) => h('div', { class: 'qa' },
+      h('div', { class: 'qa-head' }, h('b', null, 'Link ' + (i + 1)),
+        h('button', { type: 'button', class: 'ibtn', title: 'Remove link', 'aria-label': 'Remove link', onclick: () => s(() => { list.splice(i, 1); }, null, { panel: true }) }, icon('trash'))),
+      field('Menu text', inputCtl(m.label, v => s(() => { m.label = v; }, m.id + 'l'))),
+      field('Goes to', linkCtl(m.link, m.newTab, (l, t) => s(() => { m.link = l; m.newTab = t; }, m.id + 'k'))),
+      field('Show', selectCtl([['', 'At the top level'], ...tops.map(p => [p.id, 'Under “' + p.name + '”'])], m.parent || '', v => s(() => { m.parent = v; }))))),
+    h('button', { type: 'button', class: 'btn sm', onclick: () => s(() => { list.push({ id: uid(), label: 'New link', link: '', newTab: false, parent: '' }); }, null, { panel: true }) }, icon('plus'), 'Add a menu link'));
 }
 function footerPanel() {
   const ft = site.footer;
@@ -1475,10 +1668,11 @@ function renderPagesTab() {
   const files = Gen.pageFiles(site);
   const list = h('ul', { class: 'page-list' });
   site.pages.forEach((p, i) => {
-    const li = h('li', { class: 'page-item' + (p.id === pageId ? ' active' : '') },
+    const parentPage = p.parent && site.pages.find(x => x.id === p.parent);
+    const li = h('li', { class: 'page-item' + (p.id === pageId ? ' active' : '') + (parentPage ? ' is-child' : '') },
       h('button', { type: 'button', class: 'page-open', onclick: () => switchPage(p.id) },
         icon(i === 0 ? 'home' : 'page'),
-        h('span', { class: 'page-text' }, h('span', { class: 'page-name' }, p.name), h('span', { class: 'page-file' }, files[p.id] + (p.showInNav === false ? ' · hidden from menu' : '')))),
+        h('span', { class: 'page-text' }, h('span', { class: 'page-name' }, p.name), h('span', { class: 'page-file' }, files[p.id] + (p.showInNav === false ? ' · hidden from menu' : parentPage ? ' · under ' + parentPage.name : '')))),
       h('span', { class: 'page-acts' },
         h('button', { type: 'button', class: 'ibtn', title: 'Move up', 'aria-label': 'Move ' + p.name + ' up', disabled: i === 0, onclick: () => { site.pages.splice(i - 1, 0, site.pages.splice(i, 1)[0]); changed({ pages: true, panel: true }); } }, icon('up')),
         h('button', { type: 'button', class: 'ibtn', title: 'Move down', 'aria-label': 'Move ' + p.name + ' down', disabled: i === site.pages.length - 1, onclick: () => { site.pages.splice(i + 1, 0, site.pages.splice(i, 1)[0]); changed({ pages: true, panel: true }); } }, icon('down'))));
@@ -1522,6 +1716,8 @@ function deletePage(page) {
     actions: [{ label: 'Cancel' }, { label: 'Delete page', danger: true, onClick: () => {
       const i = site.pages.indexOf(page);
       site.pages.splice(i, 1);
+      site.pages.forEach(c => { if (c.parent === page.id) delete c.parent; });
+      (site.header.menuLinks || []).forEach(m => { if (m.parent === page.id) m.parent = ''; });
       pageId = site.pages[Math.max(0, i - 1)].id; sel = null;
       changed({ pages: true, panel: true });
     } }]
@@ -1591,7 +1787,9 @@ function renderDesignTab() {
       segCtl([{ v: 'square', label: 'Square' }, { v: 'soft', label: 'Soft' }, { v: 'round', label: 'Round' }], th.radius || 'soft', v => set(() => { th.radius = v; }))),
     h('section', { class: 'lgroup' }, h('h3', null, 'Website'),
       field('Website name', inputCtl(site.name, v => { site.name = v; changed({ key: 'site:name', render: false }); }), 'Used in browser tabs and search results.'),
-      field('Language', selectCtl([['en-GB', 'English (UK)'], ['en-US', 'English (US)'], ['en', 'English'], ['cy', 'Welsh'], ['ga', 'Irish'], ['fr', 'French'], ['de', 'German'], ['es', 'Spanish'], ['it', 'Italian'], ['nl', 'Dutch'], ['pt', 'Portuguese'], ['pl', 'Polish'], ['sv', 'Swedish']], site.settings.language || 'en', v => { site.settings.language = v; changed({ render: false }); }), 'Helps screen readers pronounce your words correctly.'),
+      field('Language', selectCtl([['en-GB', 'English (UK)'], ['en-US', 'English (US)'], ['en', 'English'], ['cy', 'Welsh'], ['ga', 'Irish'], ['fr', 'French'], ['de', 'German'], ['es', 'Spanish'], ['it', 'Italian'], ['nl', 'Dutch'], ['pt', 'Portuguese'], ['pl', 'Polish'], ['sv', 'Swedish']], site.settings.language || 'en', v => { site.settings.language = v; changed({ render: false }); syncSpellLanguage(); }), 'Helps screen readers pronounce your words correctly, and sets the spelling dictionary.'),
+      field('Website address', h('div', { class: 'domain-row' }, h('code', { class: 'domain-now' }, site.settings.domain ? 'https://' + Gen.cleanDomain(site.settings.domain) : 'Not set yet'), h('button', { type: 'button', class: 'btn sm', onclick: domainWizard }, icon('globe'), site.settings.domain ? 'Change…' : 'Set up…')), 'Your domain name and a free HTTPS certificate, step by step.'),
+      field('Spelling', h('button', { type: 'button', class: 'btn sm', onclick: checkSpelling }, icon('check'), 'Check spelling on every page'), DESKTOP ? 'Or press F7. Right-click an underlined word for suggestions.' : 'Right-click an underlined word for suggestions.'),
       field('Site icon', imageCtl(site.settings.favicon, v => { site.settings.favicon = v; changed({ design: true, render: false }); }, { removable: true }), 'The small picture in the browser tab. A square picture works best.'))
   ));
   root.scrollTop = scroll;
@@ -1862,6 +2060,7 @@ function loadSite(s, assetMap, path, name) {
   resetHistory();
   setDirty(false);
   renderAll();
+  syncSpellLanguage();
 }
 function newSite(kind) {
   clearAssets();
@@ -1914,6 +2113,7 @@ async function publish() {
   const warns = issues.filter(i => i.level === 'warn'), infos = issues.filter(i => i.level === 'info');
   const issueList = list => h('ul', { class: 'issues' }, list.slice(0, 12).map(i => h('li', null, icon(i.level === 'warn' ? 'warn' : 'info', i.level),
     h('span', null, i.text),
+    i.action === 'domain' ? h('button', { type: 'button', class: 'linkish', onclick: () => { m.close(); domainWizard(); } }, 'Set up') : null,
     i.pageId ? h('button', { type: 'button', class: 'linkish', onclick: () => { m.close(); setMode('edit'); if (pageId !== i.pageId) switchPage(i.pageId); if (i.id) select({ kind: 'el', id: i.id }, { scroll: true }); else select(null); } }, 'Show me') : null)));
   const files = exportFiles();
   const htmlCount = Object.keys(files).filter(f => /\.html$/.test(f)).length;
@@ -1949,10 +2149,278 @@ function published(folder, htmlCount, picCount) {
       h('h3', { class: 'issue-title' }, 'Putting it online'),
       h('ol', { class: 'steps' },
         h('li', null, 'Choose a web host. Free options include Netlify Drop, GitHub Pages and Cloudflare Pages.'),
+        h('li', null, 'Point your domain name at it and switch on free HTTPS: ', h('button', { type: 'button', class: 'linkish', onclick: () => domainWizard() }, 'Domain & HTTPS setup')),
         h('li', null, 'Upload everything inside the folder, keeping the images, css and js folders next to index.html.'),
         h('li', null, 'Publish again from Pocket-Web-Studio whenever you make changes, then upload the folder again.'))),
     actions: [{ label: 'Close' }, { label: 'Show folder', icon: 'folder', onClick: () => { api.reveal(folder); } }, { label: 'Open in browser', primary: true, icon: 'external', onClick: () => { api.openPublished(folder); } }]
   });
+}
+
+/* ================================================================== */
+/* Spelling: check every word on every page                            */
+/* ================================================================== */
+
+const SPELL_KEYS = new Set(['text', 'html', 'title', 'caption', 'alt', 'cite', 'buttonText', 'label', 'q', 'a', 'submitText', 'rows']);
+function textSlots() {
+  const out = [];
+  const walk = (obj, inText, info) => {
+    Object.keys(obj).forEach(k => {
+      const v = obj[k];
+      const textKey = Array.isArray(obj) ? inText : SPELL_KEYS.has(k);
+      if (typeof v === 'string') { if (textKey && v.trim()) out.push(Object.assign({ obj, key: k, html: k === 'html' }, info)); }
+      else if (v && typeof v === 'object') walk(v, Array.isArray(obj) ? inText : k === 'rows' || (Array.isArray(v) && textKey), info);
+    });
+  };
+  out.push({ obj: site, key: 'name', where: 'Website name' });
+  out.push({ obj: site.header, key: 'logoText', where: 'Header' });
+  (site.header.menuLinks || []).forEach(m => out.push({ obj: m, key: 'label', where: 'Header menu' }));
+  out.push({ obj: site.footer, key: 'text', where: 'Footer' });
+  site.pages.forEach(p => {
+    ['name', 'title', 'description'].forEach(k => { if (p[k]) out.push({ obj: p, key: k, where: p.name + ' (page settings)', pageId: p.id }); });
+    p.sections.forEach(s => s.columns.forEach(c => c.elements.forEach(el => {
+      if (el.type !== 'html') walk(el.props, false, { where: p.name, pageId: p.id, elId: el.id });
+    })));
+  });
+  return out.filter(s => typeof s.obj[s.key] === 'string' && s.obj[s.key].trim());
+}
+const WORD_RE = /[\p{L}](?:[\p{L}\p{M}'’]*[\p{L}\p{M}])?/gu;
+const plainOf = (v, html) => html ? v.replace(/<[^>]*>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ') : v;
+const escRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function wordRe(word) { return new RegExp('(?<![\\p{L}\\p{N}])' + escRe(word) + '(?![\\p{L}\\p{N}])', 'gu'); }
+function findMistakes() {
+  const ignore = new Set((site.settings.spellIgnore || []).map(w => w.toLowerCase()));
+  const words = new Map();
+  textSlots().forEach(slot => {
+    const txt = plainOf(slot.obj[slot.key], slot.html);
+    (txt.match(WORD_RE) || []).forEach(w => {
+      if (w.length < 2 || /^[\p{Lu}]+$/u.test(w) || ignore.has(w.toLowerCase())) return;
+      let e = words.get(w);
+      if (!e) { e = { word: w, count: 0, slots: [] }; words.set(w, e); }
+      e.count++;
+      if (!e.slots.includes(slot)) e.slots.push(slot);
+    });
+  });
+  const bad = [];
+  words.forEach(e => { if (api.isMisspelled(e.word.replace(/’/g, '\''))) bad.push(e); });
+  return bad.sort((a, b) => a.word.localeCompare(b.word));
+}
+function replaceWord(entry, repl) {
+  const re = wordRe(entry.word);
+  entry.slots.forEach(slot => {
+    const v = slot.obj[slot.key];
+    slot.obj[slot.key] = slot.html ? v.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag || txt.replace(re, repl)) : v.replace(re, repl);
+  });
+}
+async function checkSpelling() {
+  if (!DESKTOP || !api.isMisspelled) {
+    modal({ title: 'Check spelling', body: h('div', null,
+      h('p', null, 'Your browser underlines spelling mistakes in red as you type on the page.'),
+      h('p', null, 'Right-click an underlined word to see suggestions and fix it. If you see no underlines, turn on spell checking in your browser’s settings.'),
+      h('p', { class: 'hint' }, 'The desktop app can check every page of your website at once.')), actions: [{ label: 'OK', primary: true }] });
+    return;
+  }
+  let enabled = true;
+  try { enabled = await api.spellEnabled(); } catch (e) { /* ignore */ }
+  if (!enabled) { modal({ title: 'Check spelling', body: h('p', null, 'Spell checking is turned off. Turn on View › Underline Spelling Mistakes, then try again.'), actions: [{ label: 'OK', primary: true }] }); return; }
+  const a = cdoc() && cdoc().activeElement; if (a && a.isContentEditable) a.blur();
+  const body = h('div');
+  const m = modal({ title: 'Check spelling', body, wide: true, actions: [{ label: 'Done', primary: true }] });
+  const draw = () => {
+    const list = findMistakes();
+    body.innerHTML = '';
+    if (!list.length) { body.appendChild(h('div', { class: 'all-good' }, icon('check'), h('p', null, 'No spelling mistakes found on any page.'))); return; }
+    body.appendChild(h('p', { class: 'lead' }, list.length + ' word' + (list.length > 1 ? 's' : '') + ' to check. Names and special words may be fine — choose Ignore or Add to dictionary for those.'));
+    const ul = h('ul', { class: 'spell-list' });
+    list.slice(0, 80).forEach(e => {
+      const sugg = (api.spellSuggestions(e.word) || []).slice(0, 8);
+      const own = h('input', { type: 'text', class: 'inp', placeholder: 'Type the right spelling', 'aria-label': 'Right spelling for ' + e.word, hidden: sugg.length ? true : null });
+      const pick = sugg.length ? selectCtl([...sugg.map(s => [s, s]), ['__own', 'Type my own…']], sugg[0], v => { own.hidden = v !== '__own'; if (!own.hidden) own.focus(); }) : null;
+      if (pick) pick.setAttribute('aria-label', 'Suggestion for ' + e.word);
+      const first = e.slots[0];
+      ul.appendChild(h('li', null,
+        h('div', { class: 'spell-word' }, h('b', null, e.word), h('span', { class: 'hint' }, (e.count > 1 ? e.count + ' times · ' : '') + e.slots.map(s => s.where).filter((w, i, arr) => arr.indexOf(w) === i).slice(0, 3).join(', '))),
+        h('div', { class: 'spell-fix' }, pick, own),
+        h('div', { class: 'btn-row' },
+          h('button', { type: 'button', class: 'btn sm primary', onclick: () => {
+            const v = (pick && pick.value !== '__own' ? pick.value : own.value).trim();
+            if (!v) { own.hidden = false; own.focus(); return; }
+            replaceWord(e, v); changed({ panel: true, pages: true }); draw();
+          } }, 'Change all'),
+          h('button', { type: 'button', class: 'btn sm', onclick: () => { site.settings.spellIgnore = [...(site.settings.spellIgnore || []), e.word]; changed({ render: false }); draw(); } }, 'Ignore'),
+          h('button', { type: 'button', class: 'btn sm', onclick: async () => { try { await api.spellAddWord(e.word); } catch (err) { /* ignore */ } site.settings.spellIgnore = [...(site.settings.spellIgnore || []), e.word]; changed({ render: false }); draw(); } }, 'Add to dictionary'),
+          first && first.pageId ? h('button', { type: 'button', class: 'linkish', onclick: () => { m.close(); setMode('edit'); if (pageId !== first.pageId) switchPage(first.pageId); if (first.elId) select({ kind: 'el', id: first.elId }, { scroll: true }); else select(null); } }, 'Show me') : null)));
+    });
+    body.appendChild(ul);
+    if (list.length > 80) body.appendChild(h('p', { class: 'hint' }, 'Showing the first 80. Fix these, then check again.'));
+  };
+  draw();
+}
+function syncSpellLanguage() { if (DESKTOP && api.spellLanguage && site) api.spellLanguage(site.settings.language || 'en').catch(() => {}); }
+
+/* ================================================================== */
+/* Domain name and free HTTPS certificate                               */
+/* ================================================================== */
+
+const GH_A = ['185.199.108.153', '185.199.109.153', '185.199.110.153', '185.199.111.153'];
+const GH_AAAA = ['2606:50c0:8000::153', '2606:50c0:8001::153', '2606:50c0:8002::153', '2606:50c0:8003::153'];
+const NETLIFY_A = '75.2.60.5';
+const TWO_PART_TLDS = /\.(co|org|me|ac|gov|net|ltd|plc|sch)\.(uk|nz|za|jp|in|kr|il)$|\.(com|net|org|edu|gov)\.(au|br|mx|ar|tr|sg|my|hk|cn|ng|pk)$/;
+function domainParts(d) {
+  const labels = d.split('.');
+  const apexLen = TWO_PART_TLDS.test(d) ? 3 : 2;
+  const apex = labels.slice(-apexLen).join('.');
+  const sub = labels.slice(0, -apexLen).join('.');
+  return { apex, sub, isWww: sub === 'www', isApex: !sub || sub === 'www' };
+}
+const HOSTS = [
+  { v: 'github', label: 'GitHub Pages', note: 'Free. Your site lives in a GitHub repository.', idLabel: 'Your GitHub user name', idPh: 'your-name', target: id => (id || 'your-name') + '.github.io', guide: 'https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site' },
+  { v: 'netlify', label: 'Netlify', note: 'Free plan. Drag your published folder onto app.netlify.com/drop.', idLabel: 'Your Netlify site name', idPh: 'my-site', target: id => (id || 'my-site') + '.netlify.app', guide: 'https://docs.netlify.com/domains-https/custom-domains/configure-external-dns/' },
+  { v: 'cloudflare', label: 'Cloudflare Pages', note: 'Free. Upload your published folder in the Cloudflare dashboard.', idLabel: 'Your Pages project name', idPh: 'my-site', target: id => (id || 'my-site') + '.pages.dev', guide: 'https://developers.cloudflare.com/pages/configuration/custom-domains/' },
+  { v: 'server', label: 'My own server or another host', note: 'A server you rent, or a hosting company’s control panel.', idLabel: 'Your server’s IP address', idPh: '203.0.113.10', target: id => id || '203.0.113.10' }
+];
+function copyBtn(text, label) {
+  return h('button', { type: 'button', class: 'btn sm copy', title: 'Copy', onclick: () => {
+    const done = () => toast('Copied ' + (label || text));
+    if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => toast('Select the text and copy it yourself.')); else toast('Select the text and copy it yourself.');
+  } }, icon('copy'), 'Copy');
+}
+function codeBlock(text) { return h('div', { class: 'code-copy' }, h('pre', null, text), copyBtn(text, 'to the clipboard')); }
+function dnsRecords(st) {
+  const host = HOSTS.find(x => x.v === st.host);
+  const p = domainParts(st.domain);
+  const rows = [];
+  const target = host.target(st.hostId);
+  const name = p.isApex ? '@' : p.sub;
+  if (st.host === 'github') {
+    if (p.isApex) { GH_A.forEach(ip => rows.push(['A', '@', ip])); GH_AAAA.forEach(ip => rows.push(['AAAA', '@', ip])); rows.push(['CNAME', 'www', target]); }
+    else rows.push(['CNAME', name, target]);
+  } else if (st.host === 'netlify') {
+    if (p.isApex) { rows.push(['A', '@', NETLIFY_A]); rows.push(['CNAME', 'www', target]); }
+    else rows.push(['CNAME', name, target]);
+  } else if (st.host === 'cloudflare') {
+    if (!p.isApex) rows.push(['CNAME', name, target]);
+  } else {
+    rows.push(['A', name, target]);
+    if (p.isApex) rows.push(['CNAME', 'www', p.apex]);
+  }
+  return rows;
+}
+function domainWizard() {
+  const st = { step: 1, domain: Gen.cleanDomain(site.settings.domain || ''), host: site.settings.host || '', hostId: site.settings.hostId || '' };
+  const body = h('div', { class: 'wiz' });
+  const m = modal({ title: 'Website address and free HTTPS', body, wide: true, cls: 'wiz-modal' });
+  const nav = (back, next, nextLabel, nextDisabled) => h('div', { class: 'wiz-nav' },
+    back ? h('button', { type: 'button', class: 'btn', onclick: back }, 'Back') : h('span'),
+    h('button', { type: 'button', class: 'btn primary', disabled: nextDisabled || null, onclick: next }, nextLabel || 'Next'));
+  const steps = ['Address', 'Host', 'DNS records', 'HTTPS'];
+  const go = n => { st.step = n; draw(); };
+  const draw = () => {
+    body.innerHTML = '';
+    body.appendChild(h('ol', { class: 'wiz-steps' }, steps.map((s, i) => h('li', { class: i + 1 === st.step ? 'cur' : i + 1 < st.step ? 'done' : null }, s))));
+    const host = HOSTS.find(x => x.v === st.host);
+    if (st.step === 1) {
+      const err = h('p', { class: 'hint err', hidden: true }, 'Type a domain such as harbourlanebakery.co.uk');
+      const inp = inputCtl(st.domain, v => { st.domain = v; }, { placeholder: 'www.yourname.com' });
+      const next = () => { const d = Gen.cleanDomain(st.domain); if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/.test(d)) { err.hidden = false; inp.focus(); return; } st.domain = d; go(2); };
+      inp.addEventListener('keydown', e => { if (e.key === 'Enter') next(); });
+      body.append(
+        h('p', { class: 'lead' }, 'A domain name is your website’s address, like harbourlanebakery.co.uk. You rent it for about £5–£15 a year from a domain company (a “registrar”) such as Cloudflare, Porkbun, Namecheap, IONOS or 123-reg.'),
+        field('Your domain name', inp, 'Already have one? Type it here. Include www. if you want visitors to see it.'), err,
+        h('p', { class: 'hint' }, 'Pocket-Web-Studio uses it for your sitemap, search engine links and social media previews, and for the CNAME file GitHub Pages needs.'),
+        nav(null, next));
+      setTimeout(() => inp.focus(), 30);
+    } else if (st.step === 2) {
+      const grid = h('div', { class: 'host-grid', role: 'radiogroup', 'aria-label': 'Web host' });
+      HOSTS.forEach(x => grid.appendChild(h('button', { type: 'button', role: 'radio', class: 'host-card', 'aria-checked': String(st.host === x.v), onclick: () => { st.host = x.v; draw(); } }, h('b', null, x.label), h('span', null, x.note))));
+      body.append(h('p', { class: 'lead' }, 'Where will you upload your published website?'), grid,
+        host ? field(host.idLabel, inputCtl(st.hostId, v => { st.hostId = v.trim(); }, { placeholder: host.idPh }), st.host === 'server' ? 'Your hosting company shows this in its control panel.' : 'Used to fill in the records on the next step.') : null,
+        nav(() => go(1), () => go(3), 'Next', !host));
+    } else if (st.step === 3) {
+      const p = domainParts(st.domain);
+      const rows = dnsRecords(st);
+      const table = rows.length ? h('table', { class: 'dns' }, h('thead', null, h('tr', null, h('th', null, 'Type'), h('th', null, 'Name / Host'), h('th', null, 'Value / Points to'), h('th', null, h('span', { class: 'sr' }, 'Copy')))),
+        h('tbody', null, rows.map(r => h('tr', null, h('td', null, r[0]), h('td', null, h('code', null, r[1])), h('td', null, h('code', null, r[2])), h('td', null, copyBtn(r[2], r[2])))))) : null;
+      const where = {
+        github: ['In your repository on GitHub, open Settings › Pages.', 'Under “Custom domain”, type ' + st.domain + ' and press Save.', 'Pocket-Web-Studio puts a CNAME file in your published folder, so the address stays set each time you upload.'],
+        netlify: ['In Netlify, open your site › Domain management › Add a domain.', 'Type ' + st.domain + ' and follow the steps.', 'Your domain company may support an ALIAS record instead of the A record — if so, point it at apex-loadbalancer.netlify.com.'],
+        cloudflare: p.isApex
+          ? ['For a main domain like ' + p.apex + ', Cloudflare must run its DNS. Add the domain to your Cloudflare account and change its nameservers at your domain company to the two Cloudflare gives you.', 'Then open your Pages project › Custom domains › Set up a custom domain, and type ' + st.domain + '. Cloudflare adds the record for you.']
+          : ['First open your Pages project › Custom domains › Set up a custom domain and type ' + st.domain + '.', 'Then add the record below at your domain company. (Adding it before this step can show a 522 error.)'],
+        server: ['These records send visitors to your server.', 'If your host gave you nameservers instead, set those at your domain company and add the domain in the host’s control panel.']
+      }[st.host];
+      body.append(
+        h('p', { class: 'lead' }, 'Log in where you bought ' + p.apex + ', open its DNS settings and add these records. Delete any old A or AAAA records for the same name first (often a “parked” page).'),
+        table, h('ol', { class: 'steps' }, where.map(t => h('li', null, t))),
+        h('p', { class: 'hint' }, 'DNS changes usually work within an hour but can take up to 48 hours.'),
+        host.guide ? h('p', { class: 'hint' }, h('a', { href: host.guide, target: '_blank', rel: 'noopener' }, 'Read ' + host.label + '’s own guide')) : null,
+        DESKTOP && api.checkDomain ? domainChecker(st) : null,
+        nav(() => go(2), () => go(4)));
+    } else {
+      const p = domainParts(st.domain);
+      const names = p.isApex ? p.apex + ', www.' + p.apex : st.domain;
+      const dflags = (p.isApex ? ['-d ' + p.apex, '-d www.' + p.apex] : ['-d ' + st.domain]).join(' ');
+      const certs = {
+        github: [h('p', null, 'GitHub gets a free certificate from Let’s Encrypt for you once your DNS records work.'),
+          h('ol', { class: 'steps' }, h('li', null, 'Open Settings › Pages in your repository.'), h('li', null, 'Tick “Enforce HTTPS”. If it is greyed out, wait — it can take up to 24 hours after DNS is set up.'))],
+        netlify: [h('p', null, 'Netlify gets and renews a free Let’s Encrypt certificate for you automatically.'),
+          h('ol', { class: 'steps' }, h('li', null, 'Open Domain management › HTTPS.'), h('li', null, 'If it says it is waiting on DNS, press “Verify DNS configuration”, then “Provision certificate”.'))],
+        cloudflare: [h('p', null, 'Cloudflare issues and renews the certificate for your custom domain automatically — there is nothing to install.'),
+          h('p', { class: 'hint' }, 'If it stays “pending”, check your domain has no CAA records that block Cloudflare.')],
+        server: [
+          h('h3', { class: 'issue-title' }, 'Easiest: Caddy web server'),
+          h('p', null, 'Caddy gets and renews free certificates by itself. Put your published folder at /var/www/' + p.apex + ' and use this Caddyfile:'),
+          codeBlock(names + ' {\n    root * /var/www/' + p.apex + '\n    file_server\n    encode gzip\n}'),
+          h('p', { class: 'hint' }, 'Ports 80 and 443 must be open, and your DNS records must already point at the server.'),
+          h('h3', { class: 'issue-title' }, 'Already using nginx or Apache: Certbot'),
+          h('p', null, 'Certbot gets free certificates from Let’s Encrypt and sets up renewals. On Ubuntu or Debian with nginx:'),
+          codeBlock('sudo apt install certbot python3-certbot-nginx\nsudo certbot --nginx ' + dflags),
+          h('p', null, 'With Apache, use python3-certbot-apache and --apache instead. Test renewals with:'),
+          codeBlock('sudo certbot renew --dry-run'),
+          h('h3', { class: 'issue-title' }, 'Hosting company with a control panel'),
+          h('p', null, 'Look for “SSL/TLS”, “AutoSSL” or “Let’s Encrypt” in cPanel, Plesk or your host’s dashboard and switch it on for ' + st.domain + '. Most hosts include it free.'),
+          h('p', { class: 'hint' }, h('a', { href: 'https://caddyserver.com/docs/automatic-https', target: '_blank', rel: 'noopener' }, 'Caddy guide'), ' · ', h('a', { href: 'https://certbot.eff.org/instructions', target: '_blank', rel: 'noopener' }, 'Certbot instructions'))]
+      }[st.host];
+      body.append(h('p', { class: 'lead' }, 'HTTPS shows the padlock in the address bar and keeps visitors safe. It is free.'), ...certs,
+        nav(() => go(3), () => {
+          site.settings.domain = st.domain; site.settings.host = st.host; site.settings.hostId = st.hostId;
+          changed({ render: false, design: true });
+          m.close();
+          toast('Saved. Publish your website again to add the sitemap' + (st.host === 'github' ? ' and CNAME file.' : '.'));
+        }, 'Save and finish'));
+    }
+  };
+  draw();
+}
+function domainChecker(st) {
+  const out = h('div', { class: 'dns-result', 'aria-live': 'polite' });
+  const run = async () => {
+    out.innerHTML = '';
+    out.appendChild(h('p', { class: 'hint' }, 'Checking…'));
+    let r;
+    try { r = await api.checkDomain(st.domain); } catch (err) { out.innerHTML = ''; out.appendChild(h('p', { class: 'hint err' }, err.message)); return; }
+    const want = dnsRecords(st);
+    const p = domainParts(st.domain);
+    const lines = [];
+    const ok = (good, text) => lines.push(h('li', null, icon(good ? 'check' : 'warn', good ? 'ok' : 'warn'), h('span', null, text)));
+    const wantA = want.filter(x => x[0] === 'A').map(x => x[2]);
+    if (wantA.length) {
+      const got = r.a || [];
+      ok(wantA.some(ip => got.includes(ip)), r.apex + ' points to ' + (got.length ? got.join(', ') : 'nothing yet') + (wantA.some(ip => got.includes(ip)) ? '' : ' — expected ' + wantA.join(', ')));
+    }
+    const wantC = want.find(x => x[0] === 'CNAME');
+    if (wantC) {
+      const isWww = wantC[1] === 'www';
+      const got = isWww ? (r.wwwCname || []) : (r.cname || []);
+      const good = got.some(c => c.toLowerCase().replace(/\.$/, '') === wantC[2].toLowerCase());
+      const label = isWww ? r.www : st.domain;
+      ok(good || (isWww && (r.wwwA || []).some(ip => wantA.includes(ip))), label + ' ' + (got.length ? 'points to ' + got.join(', ') : (isWww && (r.wwwA || []).length ? 'points to ' + r.wwwA.join(', ') : 'has no record yet')) + (good ? '' : ' — expected ' + wantC[2]));
+    }
+    if (st.host === 'cloudflare' && p.isApex) ok((r.a || []).length > 0, r.apex + (r.a && r.a.length ? ' is answering (' + r.a.join(', ') + ')' : ' is not answering yet'));
+    out.innerHTML = '';
+    out.appendChild(h('ul', { class: 'issues' }, lines));
+    out.appendChild(h('p', { class: 'hint' }, 'Just changed them? Records can take a while to update. Check again later.'));
+  };
+  return h('div', { class: 'dns-check' }, h('button', { type: 'button', class: 'btn sm', onclick: run }, icon('globe'), 'Check my domain'), out);
 }
 
 async function previewInBrowser() {
@@ -2041,6 +2509,8 @@ const COMMANDS = {
   'add-page': addPage,
   'about': () => showAbout(false),
   'licence': () => showAbout(true),
+  'spelling': checkSpelling,
+  'domain': domainWizard,
   'save-all-and-close': async () => { if (await saveProject(false)) api.closeNow(); }
 };
 

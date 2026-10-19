@@ -34,6 +34,7 @@ const ELEMENTS = [
   { type: 'text', label: 'Text box', group: 'Basics' },
   { type: 'button', label: 'Button', group: 'Basics' },
   { type: 'image', label: 'Picture', group: 'Basics' },
+  { type: 'link', label: 'Link', group: 'Basics' },
   { type: 'divider', label: 'Line', group: 'Basics' },
   { type: 'spacer', label: 'Space', group: 'Basics' },
   { type: 'gallery', label: 'Gallery', group: 'Pictures & media' },
@@ -64,6 +65,7 @@ const DEFAULTS = {
   heading: () => ({ text: 'Your heading', level: 2 }),
   text: () => ({ html: '<p>Click here and start typing. Select some words to make them <strong>bold</strong>, <em>italic</em> or a link.</p>' }),
   button: () => ({ text: 'Find out more', link: '', newTab: false, variant: 'filled', size: 'md' }),
+  link: () => ({ text: 'Read more', link: '', newTab: false, arrow: true }),
   image: ctx => ({ src: ctx.ph(1), alt: '', caption: '', link: '', newTab: false }),
   gallery: ctx => ({ images: [1, 2, 3, 4, 5, 6].map(i => ({ src: ctx.ph(i), alt: '', caption: '' })), columns: 3, ratio: 'square', gap: 'md', lightbox: true }),
   slideshow: ctx => ({ slides: [1, 3, 2].map((i, n) => ({ src: ctx.ph(i), alt: '', caption: ['First slide', 'Second slide', 'Third slide'][n] })), autoplay: 5, ratio: 'wide', arrows: true, dots: true, kenburns: false, label: '' }),
@@ -157,10 +159,10 @@ function baseSite(name, palette, pair, ctx) {
   return {
     format: 'pocket-site', version: 2, name,
     theme: { palette, colors: Object.assign({}, Gen.PALETTES[palette]), fonts: { heading: fp.heading, body: fp.body }, radius: 'soft' },
-    header: { show: true, logoText: name, logoImage: null, layout: 'split', sticky: true, bg: 'surface', color: '' },
+    header: { show: true, logoText: name, logoImage: null, layout: 'split', sticky: true, bg: 'surface', color: '', menuLinks: [] },
     footer: { show: true, text: '© {year} ' + name + '. All rights reserved.', showNav: true, bg: 'text', color: '' },
     pages: [],
-    settings: { language: 'en-GB', favicon: null, publishFolder: null }
+    settings: { language: 'en-GB', favicon: null, publishFolder: null, domain: '', host: '' }
   };
 }
 const page = (ctx, name, sections, extra) => Object.assign({ id: ctx.id(), name, title: '', description: '', showInNav: true, sections }, extra || {});

@@ -26,7 +26,26 @@ for (const kind of ['blank', 'business', 'portfolio']) {
     site.pages[0].sections.push(T.makeSectionObj(ctx, '1-1', [els.slice(0, 9), els.slice(9)]));
     T.SECTIONS.forEach(s => site.pages[0].sections.push(...s.make(ctx)));
   }
+  if (kind === 'business') {
+    // drop-down menu, extra menu links, links, sizes, shapes and a domain
+    site.pages[2].parent = site.pages[1].id;
+    site.header.menuLinks = [{ id: 'ml1', label: 'Order online', link: 'https://example.com/order', newTab: true, parent: '' }, { id: 'ml2', label: 'Gift cards', link: 'page:' + site.pages[0].id, parent: site.pages[1].id }];
+    const els = site.pages[0].sections.flatMap(s => s.columns.flatMap(c => c.elements));
+    els.find(e => e.type === 'heading').props.link = 'page:' + site.pages[1].id;
+    const img = els.find(e => e.type === 'image'); img.props.shape = 'circle'; img.style.width = '60';
+    const card = els.find(e => e.type === 'card'); card.props.imageShape = 'square'; card.style.width = '85';
+    site.pages[0].sections[0].columns[0].elements.push(T.makeElement('spacer', ctx, { height: 90 }), T.makeElement('link', ctx, { text: 'See the menu', link: 'page:' + site.pages[2].id }));
+    site.settings.domain = 'https://www.harbourlane.example/';
+    site.settings.host = 'github';
+  }
   const out = Gen.generateSite(site, { assetInfo: name => assets[name] });
+  if (kind === 'business') {
+    const home = out.files['index.html'], css = out.files['css/style.css'];
+    const must = [[home, 'class="has-sub'], [home, 'class="wv-sub"'], [home, 'Gift cards'], [home, 'target="_blank" rel="noopener">Order online'], [home, '<link rel="canonical" href="https://www.harbourlane.example/">'],
+      [home, 'class="wv-link'], [css, 'max-width: 60%'], [css, 'border-radius: 50%'], [css, 'height: 90px'], [out.files['CNAME'] || '', 'www.harbourlane.example'], [out.files['sitemap.xml'] || '', '<loc>https://www.harbourlane.example/visit-us.html</loc>'], [out.files['robots.txt'] || '', 'Sitemap: https://www.harbourlane.example/sitemap.xml']];
+    must.forEach(([text, needle]) => { if (!text.includes(needle)) throw new Error('Missing in output: ' + needle); });
+    console.log('business   drop-downs, links, sizes, shapes and domain files present');
+  }
   const dir = path.join(outRoot, kind);
   for (const [p, content] of Object.entries(out.files)) {
     fs.mkdirSync(path.dirname(path.join(dir, p)), { recursive: true });
