@@ -1,5 +1,5 @@
 // Pocket-Web-Studio — visual drag-and-drop editor
-// Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
+// Copyright (c) 2026 Pocket-Designs. MIT licence, see LICENSE.
 (function () {
 'use strict';
 const Gen = window.WeaverGen, T = window.WeaverTemplates, highlight = window.WeaverHighlight;
@@ -2519,7 +2519,7 @@ async function showAbout(licence) {
   try { text = DESKTOP ? await api.licence() : (document.getElementById('licenceText') || {}).textContent || ''; } catch (e) { text = 'The licence file could not be read.'; }
   modal({
     title: licence ? 'Licence' : 'Pocket-Web-Studio', wide: true,
-    body: h('div', null, h('img', { class: 'about-logo', src: LOGO_SRC, alt: 'Pocket-Web-Studio logo', width: '150', height: '150' }), h('p', { class: 'hint' }, 'Version ' + appVersion + ' · MIT licence · Builds websites with HTML5, CSS and JavaScript.'), h('p', { class: 'hint' }, 'Made by project-tech-me · project-tech-me@protonmail.com'), h('pre', { class: 'licence' }, text)),
+    body: h('div', null, h('img', { class: 'about-logo', src: LOGO_SRC, alt: 'Pocket-Web-Studio logo', width: '150', height: '150' }), h('p', { class: 'hint' }, 'Version ' + appVersion + ' · MIT licence · Builds websites with HTML5, CSS and JavaScript.'), h('p', { class: 'hint' }, 'Made by Pocket-Designs · pocket-designs@proton.me'), h('pre', { class: 'licence' }, text)),
     actions: [{ label: 'Close', primary: true }]
   });
 }

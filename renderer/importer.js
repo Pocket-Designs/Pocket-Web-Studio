@@ -3,7 +3,7 @@
 // layout: which blocks are sections, which sit side by side as columns, and what colours and
 // fonts the site uses. Content becomes Pocket-Web-Studio elements; anything Pocket-Web-Studio has no element for is kept
 // as "Own code" so nothing is lost.
-// Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
+// Copyright (c) 2026 Pocket-Designs. MIT licence, see LICENSE.
 (function (root) {
 'use strict';
 

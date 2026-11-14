@@ -47,10 +47,9 @@ npm test           # generate sample sites and check them against the HTML stand
 
 The repository includes a GitHub Actions workflow (`.github/workflows/build.yml`), so you don't need Windows, a Mac or Wine to build:
 
-1. Push the project to a GitHub repository.
-2. Every push runs the tests, then builds the Windows installer and portable zip, the Linux AppImage and .deb, and the macOS .dmg on GitHub's own machines.
-3. Open the **Actions** tab, choose the latest **Build** run and download the files from **Artifacts**.
-4. To publish a release, push a version tag: `git tag v2.1.0 && git push --tags`. The installers are attached to a new GitHub Release automatically.
+1. Push the project to a GitHub repository. Every push and pull request runs the tests.
+2. To build the installers, create a release on GitHub.com (**Releases › Draft a new release**, type a new tag such as `v2.1.0`, then **Publish release**), or open the **Actions** tab, choose **Build** and press **Run workflow**.
+3. GitHub builds the Windows setup (.exe), the Linux AppImage and .deb, and the macOS .dmg, and attaches them to a GitHub Release. Download them from the repository's **Releases** page.
 
 The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper will warn the first time they are opened.
 
@@ -95,16 +94,22 @@ renderer/
   highlight.js        Syntax colouring for the Code view
   styles.css          The editor's look
 test/generate.js      Generates sample sites and validates them
+docs/                 User Guide and Developer Guide
 .github/workflows/    Builds the installers on GitHub
 build/                App icon and the Windows build step
 ```
 
+## Guides
+
+- [User Guide](docs/USER-GUIDE.md): how to build and publish a website with Pocket-Web-Studio.
+- [Developer Guide](docs/DEVELOPER-GUIDE.md): how the code works, and how to test, build and release it.
+
 ## Author
 
-project-tech-me · project-tech-me@protonmail.com
+Pocket-Designs · pocket-designs@proton.me
 
 ## Licence
 
-MIT. Copyright (c) 2026 project-tech-me. See [LICENSE](LICENSE).
+MIT. Copyright (c) 2026 Pocket-Designs. See [LICENSE](LICENSE).
 
 The product icon (`build/icon.png`, `build/icon.ico` and `renderer/logo.png`) is not covered by the MIT licence. It is by MJO-Art (workmjo@gmail.com), all rights reserved, and can't be altered or used without the artist's permission. Websites you make with Pocket-Web-Studio belong to you and can be licensed however you like.

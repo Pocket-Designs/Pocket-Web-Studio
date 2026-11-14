@@ -1,6 +1,6 @@
 // Pocket-Web-Studio — site generator
 // Turns the visual page model into standards-based HTML, CSS and JavaScript.
-// Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
+// Copyright (c) 2026 Pocket-Designs. MIT licence, see LICENSE.
 (function (root, factory) {
   const api = factory();
   if (typeof module === 'object' && module.exports) module.exports = api;

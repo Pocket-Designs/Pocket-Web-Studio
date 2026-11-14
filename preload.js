@@ -1,6 +1,6 @@
 'use strict';
 // Pocket-Web-Studio — safe bridge between the editor window and the main process.
-// Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
+// Copyright (c) 2026 Pocket-Designs. MIT licence, see LICENSE.
 
 const { contextBridge, ipcRenderer, webFrame } = require('electron');
 

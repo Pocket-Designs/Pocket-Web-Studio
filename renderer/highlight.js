@@ -1,5 +1,5 @@
 // Pocket-Web-Studio — syntax colouring for the read-only Code view
-// Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
+// Copyright (c) 2026 Pocket-Designs. MIT licence, see LICENSE.
 (function (root) {
 'use strict';
 const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

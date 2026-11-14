@@ -1,5 +1,5 @@
 // Pocket-Web-Studio — elements, ready-made sections and starter websites
-// Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
+// Copyright (c) 2026 Pocket-Designs. MIT licence, see LICENSE.
 (function (root, factory) {
   const api = factory(root.WeaverGen || (typeof require === 'function' ? require('./generator.js') : null));
   if (typeof module === 'object' && module.exports) module.exports = api;

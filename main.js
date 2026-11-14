@@ -1,6 +1,6 @@
 'use strict';
 // Pocket-Web-Studio — Electron main process
-// Copyright (c) 2026 project-tech-me. MIT licence, see LICENSE.
+// Copyright (c) 2026 Pocket-Designs. MIT licence, see LICENSE.
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, shell, protocol } = require('electron');
 const path = require('path');

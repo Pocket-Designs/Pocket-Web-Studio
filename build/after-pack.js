@@ -29,8 +29,8 @@ exports.default = async function afterPack(context) {
   vi.setStringValues({ lang: 1033, codepage: 1200 }, {
     FileDescription: 'Pocket-Web-Studio',
     ProductName: 'Pocket-Web-Studio',
-    CompanyName: 'project-tech-me',
-    LegalCopyright: 'Copyright (c) 2026 project-tech-me. MIT licence.',
+    CompanyName: 'Pocket-Designs',
+    LegalCopyright: 'Copyright (c) 2026 Pocket-Designs. MIT licence.',
     OriginalFilename: `${productFilename}.exe`,
     InternalName: 'PocketWebStudio',
     FileVersion: version,
