@@ -119,7 +119,7 @@ let history = [], hIndex = -1, lastKey = null, lastTime = 0;
 let drag = null, dropTarget = null;
 let previewPage = null;
 let codeFile = 'index.html';
-let appVersion = '2.0.0';
+let appVersion = '2.1.0';
 const LOGO_SRC = (document.querySelector('.brand-logo') || {}).src || 'logo.png';
 
 const uid = () => Math.random().toString(36).slice(2, 7) + Date.now().toString(36).slice(-3);
