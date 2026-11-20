@@ -1,3 +1,7 @@
+<div align="center">
+<img width="224" height="224" alt="Pocket-Web-Studio icon" src="build/icon.png" />
+</div>
+
 # Pocket-Web-Studio
 
 A drag-and-drop website builder for people who don't write code. Build pages visually and Pocket-Web-Studio writes the HTML, CSS and JavaScript for you.
@@ -16,10 +20,11 @@ A drag-and-drop website builder for people who don't write code. Build pages vis
 - **Colours and fonts.** Choose a colour scheme or set your own five colours. Every element's colour picker offers your scheme first, so the whole site changes together. There are nine font pairings, plus 19 fonts to mix.
 - **Movement.** Make elements fade, rise, slide or zoom in as visitors scroll. Keep pictures floating, pulsing, swaying or spinning. Slideshows can slowly zoom, banners can scroll and backgrounds can stay still while the page moves (parallax). Movement switches off for visitors who have asked their device for less motion.
 - **Pictures.** Drag photos straight from your computer onto the page, a gallery or a slideshow. Large photos are resized and compressed automatically, so a 4 MB camera photo becomes a fast-loading WebP of a few hundred KB.
+- **Galleries and slideshows that fit any screen.** Galleries show fewer pictures per row in narrow columns and on phones, and "As taken" galleries stack pictures of different shapes neatly. Choose which part of a cropped picture stays in view (top, middle or bottom), or show slideshow pictures whole. Slideshows get a little taller on phones.
 - **Import an existing website.** Choose a folder of HTML, CSS and pictures and Pocket-Web-Studio rebuilds it as pages you can edit: sections, columns, headings, text, pictures, galleries, buttons, tables, quotes, questions, videos and maps, plus the site's colours, fonts, logo, menu order and footer. Anything without a matching element (such as forms or widgets) is kept as "Own code". The original files are never changed.
 - **Pages.** Add, rename, reorder and duplicate pages. The menu and footer links update themselves.
 - **Preview** your site with all its effects working, at computer, tablet and phone sizes.
-- **Code view** shows the code Pocket-Web-Studio has written. It's read-only, for the curious.
+- **Edit the code.** The Code view shows every file Pocket-Web-Studio writes. Change a page's HTML and press **Apply changes** (Ctrl+Enter): your design updates, and anything that can't become a normal element is kept as "Own code". Add your own rules in `custom.css` and your own scripts in `custom.js`.
 - **Publish** writes the finished website to a folder you can upload to any web host. A check first points out missing picture descriptions, buttons that go nowhere and forms with no address.
 
 ## Standards
@@ -40,6 +45,7 @@ You need [Node.js](https://nodejs.org/) 18 or newer.
 ```bash
 npm install
 npm start          # run the app
+npm run build:web  # build the one-file browser version in dist/web/
 npm test           # generate sample sites and check them against the HTML standard
 ```
 
@@ -48,7 +54,7 @@ npm test           # generate sample sites and check them against the HTML stand
 The repository includes a GitHub Actions workflow (`.github/workflows/build.yml`), so you don't need Windows, a Mac or Wine to build:
 
 1. Push the project to a GitHub repository. Every push and pull request runs the tests.
-2. To build the installers, create a release on GitHub.com (**Releases › Draft a new release**, type a new tag such as `v2.1.0`, then **Publish release**), or open the **Actions** tab, choose **Build** and press **Run workflow**.
+2. To build the installers, create a release on GitHub.com (**Releases › Draft a new release**, type a new tag such as `v2.2.0`, then **Publish release**), or open the **Actions** tab, choose **Build** and press **Run workflow**.
 3. GitHub builds the Windows setup (.exe), the Linux AppImage and .deb, and the macOS .dmg, and attaches them to a GitHub Release. Download them from the repository's **Releases** page.
 
 The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper will warn the first time they are opened.
@@ -91,9 +97,11 @@ renderer/
   generator.js        Turns your design into HTML, CSS and JavaScript
   templates.js        Elements, ready-made sections and starter websites
   importer.js         Turns an existing website folder into editable Pocket-Web-Studio pages
+  codesync.js         Turns code edited in the Code view back into your design
   highlight.js        Syntax colouring for the Code view
   styles.css          The editor's look
 test/generate.js      Generates sample sites and validates them
+tools/build-web.js    Builds the one-file browser version (npm run build:web)
 docs/                 User Guide and Developer Guide
 .github/workflows/    Builds the installers on GitHub
 build/                App icon and the Windows build step

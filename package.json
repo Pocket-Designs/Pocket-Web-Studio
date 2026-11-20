@@ -1,7 +1,7 @@
 {
   "name": "pocket-web-studio",
   "productName": "Pocket-Web-Studio",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "A drag-and-drop website builder that writes standards-based HTML5, CSS and JavaScript for you.",
   "main": "main.js",
   "license": "MIT",
@@ -15,7 +15,8 @@
     "dist:win": "electron-builder --win",
     "dist:linux": "electron-builder --linux",
     "dist:mac": "electron-builder --mac",
-    "test": "node test/generate.js"
+    "test": "node test/generate.js",
+    "build:web": "node tools/build-web.js"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "5.1.0",

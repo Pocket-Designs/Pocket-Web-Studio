@@ -1,8 +1,12 @@
+<div align="center">
+<img width="224" height="224" alt="Pocket-Web-Studio icon" src="../build/icon.png" />
+</div>
+
 # Pocket-Web-Studio User Guide
 
 Pocket-Web-Studio lets you build a website by dragging things onto a page and typing on it. You never need to write code: it writes the HTML, CSS and JavaScript for you, and the result works on computers, tablets and phones.
 
-This guide is for version 2.1.
+This guide is for version 2.2.
 
 ---
 
@@ -23,7 +27,7 @@ This guide is for version 2.1.
 13. [Movement and effects](#13-movement-and-effects)
 14. [Contact forms](#14-contact-forms)
 15. [Checking your spelling](#15-checking-your-spelling)
-16. [Previewing your website](#16-previewing-your-website)
+16. [Previewing your website and editing the code](#16-previewing-your-website-and-editing-the-code)
 17. [Saving and opening](#17-saving-and-opening)
 18. [Importing an existing website](#18-importing-an-existing-website)
 19. [Publishing your website](#19-publishing-your-website)
@@ -40,7 +44,7 @@ Download the installer for your computer from the project's **Releases** page on
 
 | Computer | File to download |
 | --- | --- |
-| Windows | `Pocket-Web-Studio Setup 2.1.0.exe` |
+| Windows | `Pocket-Web-Studio Setup 2.2.0.exe` |
 | Linux | the `.AppImage` (runs on most Linux systems) or the `.deb` (Ubuntu, Debian, Mint) |
 | Mac | the `.dmg` |
 
@@ -185,6 +189,19 @@ On phones, columns stack on top of each other automatically.
 - **Automatic resizing:** big camera photos are shrunk and compressed (to the WebP format) so your website stays fast. A 4 MB photo usually becomes a few hundred KB.
 - **Describe the picture:** always fill this in. Screen readers read it out for blind visitors, and search engines use it. Publish reminds you if one is missing.
 - **Shape:** crop a picture to Square, Landscape, Portrait, Wide or Circle. **Original** keeps it as taken. Cards have their own picture shape setting.
+- **Keep in view:** when a picture is cropped, choose which part stays: **Top**, **Middle** or **Bottom**. Choose **Top** for photos of people, so heads aren't cut off. This works for pictures, cards, galleries and slideshows.
+
+### Galleries
+
+- **Pictures per row** is the most that will fit in a row. In a narrow column, or on a phone, the gallery shows fewer per row so the pictures never get too small.
+- **Shape:** Square, Landscape or Portrait crop every picture to the same shape. **As taken** keeps each picture's own shape and stacks them neatly in columns, like a pinboard.
+- **Space between** sets the gap, and **Click a picture to see it larger** opens it full screen.
+
+### Slideshows
+
+- **Shape:** Classic, Wide or Panorama. On phones and in narrow columns the slideshow gets a little taller, so pictures stay clear.
+- **Pictures:** **Fill the frame** crops each picture to the slideshow's shape (use **Keep in view** to choose what stays). **Show whole picture** never cuts anything off; pictures of a different shape get dark bars at the sides.
+- You can also set how often slides change, the arrows and dots, and the slow zoom effect.
 - **Video:** paste a YouTube or Vimeo link, or choose a video file from your computer.
 
 ---
@@ -294,13 +311,43 @@ On Windows and Mac the computer's own spell checker is used. On Linux the dictio
 
 ---
 
-## 16. Previewing your website
+## 16. Previewing your website and editing the code
 
 - **Preview** (top bar, or Ctrl+2) shows your site with every effect working: menus, slideshows, galleries and movement. Click links to move between pages.
 - The **Computer / Tablet / Phone** buttons show your page at those sizes.
 - **Open in browser** (F12) opens it in your normal web browser.
-- **Code** (Ctrl+3) shows the code Pocket-Web-Studio has written for the current page. It's read-only.
+- **Code** (Ctrl+3) shows the code Pocket-Web-Studio writes, and lets you change it (see below).
 - **Edit** (Ctrl+1) takes you back to editing.
+
+### Editing the code
+
+You never have to touch the code, but you can. The Code view has a tab for each file. A badge says whether you can change it.
+
+| File | Can you change it? |
+| --- | --- |
+| Your pages (`index.html` and the others) | Yes. Your design updates when you apply your changes. |
+| `css/custom.css` | Yes. Your own CSS rules. They come after the design's styles, so they win. |
+| `js/custom.js` | Yes. Your own JavaScript. It runs on your published website and in Preview, not while you edit. |
+| `css/style.css` and `js/site.js` | No. They're made from your design and settings. |
+
+To change a page:
+
+1. Click its tab and edit the code. A dot on the tab shows there are changes not yet applied.
+2. Press **Apply changes** (or Ctrl+Enter). Your design updates straight away, and Undo (Ctrl+Z) works as usual.
+3. Changed something by mistake? Press **Undo my changes** to go back to the code as it was.
+
+What happens to your changes:
+
+- Anything you didn't change keeps all its settings.
+- Changed headings, text, buttons, links, pictures, quotes, lines and spaces stay normal elements, with their look and movement settings kept.
+- New code you type, such as `<h2>`, `<p>` or `<img>`, becomes normal elements. A new `<section>` becomes a new section.
+- Anything else you change, such as a gallery's code, is kept as **Own code**, so nothing is lost. You can still edit it.
+- The page title and description are taken from `<title>` and `<meta name="description">`.
+- The header and footer come from your settings, so change those in Edit view. A message tells you if code changes there weren't kept.
+
+To use one of your pictures in `custom.css`, write `ezy-asset:` followed by the picture's name, for example `url(ezy-asset:photo-1.webp)`.
+
+If you leave the Code view, or save, with changes not yet applied, Pocket-Web-Studio applies them for you or asks first.
 
 ---
 
@@ -387,7 +434,7 @@ Click **Save and finish**, then **publish again**. Your website now gets a `site
 There is also a version that runs in a web browser, handy for trying Pocket-Web-Studio out. Editing works the same way, with these differences:
 
 - Your work is kept in that browser only. **Save** stores it there; it can't save or open `.pocketweb` files. Very large pictures may not fit, and clearing your browser's data removes your work. Use the desktop app for real projects.
-- **Publish** can't write a folder. It checks your site, then you can open the **Code** view to copy each file.
+- **Publish** can't write a folder. It checks your site, then you can open the **Code** view to copy each file. Editing the code works just as in the desktop app.
 - **Import** works: choose the website's folder when your browser asks. **Open in browser** just shows the Preview.
 - Spelling uses your browser's own checker: right-click an underlined word. Checking every page at once needs the desktop app.
 - **Check my domain** needs the desktop app.
@@ -409,6 +456,7 @@ There is also a version that runs in a web browser, handy for trying Pocket-Web-
 | Link selected words | Ctrl+K | Cmd+K |
 | Check spelling on every page | F7 | F7 |
 | Edit / Preview / Code | Ctrl+1 / 2 / 3 | Cmd+1 / 2 / 3 |
+| Apply code changes (Code view) | Ctrl+Enter | Cmd+Enter |
 | Open in browser | F12 | F12 |
 | Publish | Ctrl+P | Cmd+P |
 | Cancel a drag, or deselect | Esc | Esc |
@@ -434,6 +482,9 @@ GitHub can take up to 24 hours after your DNS records work.
 
 **My contact form opens an email program instead of sending.**
 That's the **My email** option. Switch to **A form service** for a smoother experience.
+
+**Something I changed in the code became "Own code".**
+Pocket-Web-Studio couldn't turn that code back into a normal element, so it kept it exactly as you wrote it. It still works on your website. To get a normal element back, press Ctrl+Z, or delete the Own code and add the element again.
 
 **Something went wrong.**
 Press Ctrl+Z to undo. Your saved `.pocketweb` file isn't changed until you save again.

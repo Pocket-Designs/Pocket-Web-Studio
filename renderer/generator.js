@@ -73,6 +73,7 @@ const PADS = { none: '0', sm: '0.75rem', md: '1.5rem', lg: '2.5rem' };
 const RADII = { none: '0', sm: '6px', md: '14px', lg: '28px', full: '999px' };
 const THEME_RADIUS = { square: ['0px', '0px'], soft: ['10px', '10px'], round: ['22px', '999px'] };
 const RATIOS = { square: '1 / 1', landscape: '4 / 3', portrait: '3 / 4', wide: '16 / 9', panorama: '21 / 9' };
+const FOCUS = { top: '50% 15%', center: '50% 50%', bottom: '50% 85%' };
 const SHADOW = '0 2px 6px rgb(0 0 0 / 0.08), 0 14px 34px rgb(0 0 0 / 0.12)';
 const LAYOUTS = { '1': 1, '1-1': 2, '1-2': 2, '2-1': 2, '1-1-1': 3, '1-1-1-1': 4 };
 
@@ -193,7 +194,7 @@ function usedAssets(site) {
   (function walk(v, key) {
     if (!v) return;
     if (typeof v === 'string') {
-      if (key === 'code') { let m; ASSET_TOKEN.lastIndex = 0; while ((m = ASSET_TOKEN.exec(v))) found.add(m[1]); }
+      if (key === 'code' || key === 'css' || key === 'js') { let m; ASSET_TOKEN.lastIndex = 0; while ((m = ASSET_TOKEN.exec(v))) found.add(m[1]); }
       return;
     }
     if (typeof v !== 'object') return;
@@ -360,17 +361,21 @@ a { color: var(--c-link, var(--c-primary)); text-underline-offset: 0.18em; }
 .wv-image.align-center { margin-inline: auto; }
 .wv-image.align-right { margin-left: auto; }
 .wv-image figcaption, .wv-gallery figcaption { margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.75; }
-.wv-gallery { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: var(--gap, 0.75rem); }
+.wv-gallery { --cols: 3; --gap: 0.75rem; --min-thumb: 8.5rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(max(min(100%, var(--min-thumb)), calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols))), 1fr)); gap: var(--gap); }
+.wv-gallery.is-masonry { display: block; columns: var(--cols) var(--min-thumb); column-gap: var(--gap); }
+.wv-gallery.is-masonry figure { break-inside: avoid; margin: 0 0 var(--gap); }
 .wv-gallery a { display: block; overflow: hidden; border-radius: var(--img-radius, var(--radius)); }
-.wv-gallery img { width: 100%; aspect-ratio: var(--ratio, 1 / 1); object-fit: cover; border-radius: var(--img-radius, var(--radius)); transition: transform 0.4s ease; }
+.wv-gallery img { width: 100%; aspect-ratio: var(--ratio, 1 / 1); object-fit: cover; object-position: var(--focus, 50% 50%); border-radius: var(--img-radius, var(--radius)); transition: transform 0.4s ease; }
 .wv-gallery a img { border-radius: 0; }
 .wv-gallery a:hover img { transform: scale(1.04); }
-@media (max-width: 760px) { .wv-gallery { grid-template-columns: repeat(min(var(--cols, 3), 2), minmax(0, 1fr)); } }
-.wv-slideshow { position: relative; }
+.wv-gallery.is-masonry img { aspect-ratio: auto; }
+.wv-slideshow { position: relative; container-type: inline-size; }
 .wv-slides { position: relative; display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; border-radius: var(--img-radius, var(--radius)); }
 .wv-slides::-webkit-scrollbar { display: none; }
 .wv-slide { position: relative; flex: 0 0 100%; margin: 0; overflow: hidden; scroll-snap-align: start; }
-.wv-slide img { width: 100%; aspect-ratio: var(--ratio, 16 / 9); object-fit: cover; }
+.wv-slide img { width: 100%; aspect-ratio: var(--ratio, 16 / 9); object-fit: cover; object-position: var(--focus, 50% 50%); }
+.fit-whole .wv-slide { background: #101216; }
+.fit-whole .wv-slide img { object-fit: contain; }
 .wv-slide figcaption { position: absolute; inset: auto 0 0 0; padding: 3rem 1.5rem 1.25rem; color: #fff; font-weight: 600; font-size: 1.1rem; background: linear-gradient(transparent, rgb(0 0 0 / 0.65)); }
 .kenburns .wv-slide img { animation: wv-kenburns 14s ease-in-out infinite alternate; }
 @keyframes wv-kenburns { from { scale: 1; } to { scale: 1.12; } }
@@ -382,6 +387,13 @@ a { color: var(--c-link, var(--c-primary)); text-underline-offset: 0.18em; }
 .wv-dots:empty { display: none; }
 .wv-dots button { width: 0.7rem; height: 0.7rem; padding: 0; background: currentColor; border: 0; border-radius: 50%; opacity: 0.3; cursor: pointer; }
 .wv-dots button[aria-current="true"] { opacity: 1; }
+@container (max-width: 560px) {
+  .wv-slide img { aspect-ratio: var(--ratio-sm, var(--ratio, 16 / 9)); }
+  .wv-slide figcaption { padding: 2rem 1rem 0.8rem; font-size: 0.95rem; }
+  .wv-slide-btn { width: 2.25rem; height: 2.25rem; }
+  .wv-prev { left: 0.5rem; }
+  .wv-next { right: 0.5rem; }
+}
 .wv-video, .wv-map { overflow: hidden; aspect-ratio: var(--ratio, 16 / 9); border-radius: var(--img-radius, var(--radius)); background: color-mix(in srgb, currentColor 8%, transparent); }
 .wv-video iframe, .wv-video video, .wv-map iframe { width: 100%; height: 100%; border: 0; object-fit: cover; }
 .wv-video.align-center, .wv-map.align-center { margin-inline: auto; }
@@ -398,7 +410,7 @@ a { color: var(--c-link, var(--c-primary)); text-underline-offset: 0.18em; }
 
 /* ---------- Cards, tables, FAQ ---------- */
 .wv-card { display: flex; flex-direction: column; height: 100%; overflow: hidden; color: var(--c-on-surface); background: var(--c-surface); border-radius: var(--radius); box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 10px 28px rgb(0 0 0 / 0.07); }
-.wv-card > img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+.wv-card > img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; object-position: var(--focus, 50% 50%); }
 .wv-card-body { display: flex; flex: 1; flex-direction: column; gap: 0.75rem; padding: 1.5rem; }
 .wv-card-body .wv-btn { margin-top: auto; align-self: flex-start; }
 .wv-table-wrap { overflow-x: auto; }
@@ -538,14 +550,15 @@ function elementRules(site, el, o) {
     extra.push('@media (max-width: 760px) { ' + sel + ' { max-width: 100%; } }');
   }
   if (el.type === 'gallery') {
-    d.push('--cols: ' + (p.columns || 3));
+    d.push('--cols: ' + Math.max(1, Math.min(6, +p.columns || 3)));
     d.push('--gap: ' + ({ none: '0px', sm: '0.4rem', md: '0.75rem', lg: '1.5rem' }[p.gap || 'md']));
     if (p.ratio && p.ratio !== 'original' && RATIOS[p.ratio]) d.push('--ratio: ' + RATIOS[p.ratio]);
-    if (p.ratio === 'original') d.push('--ratio: auto');
   }
   if ((el.type === 'slideshow' || el.type === 'video' || el.type === 'map') && p.ratio && RATIOS[p.ratio]) d.push('--ratio: ' + RATIOS[p.ratio]);
+  if (el.type === 'slideshow') { const sm = { wide: '3 / 2', panorama: '16 / 9' }[p.ratio || 'wide']; if (sm) d.push('--ratio-sm: ' + sm); }
+  if (['gallery', 'slideshow', 'image', 'card'].includes(el.type) && FOCUS[p.focus]) d.push('--focus: ' + FOCUS[p.focus]);
   const SHAPES = { square: '1 / 1', landscape: '4 / 3', portrait: '3 / 4', wide: '16 / 9', panorama: '21 / 9', circle: '1 / 1' };
-  if (el.type === 'image' && SHAPES[p.shape]) extra.push(sel + ' img { aspect-ratio: ' + SHAPES[p.shape] + '; object-fit: cover;' + (p.shape === 'circle' ? ' border-radius: 50%;' : '') + ' }');
+  if (el.type === 'image' && SHAPES[p.shape]) extra.push(sel + ' img { aspect-ratio: ' + SHAPES[p.shape] + '; object-fit: cover; object-position: var(--focus, 50% 50%);' + (p.shape === 'circle' ? ' border-radius: 50%;' : '') + ' }');
   if (el.type === 'card' && SHAPES[p.imageShape] && p.imageShape !== 'landscape') extra.push(sel + ' > img { aspect-ratio: ' + SHAPES[p.imageShape] + '; }');
   if (el.type === 'spacer' && +p.height) d.push('height: ' + Math.max(4, Math.min(600, Math.round(+p.height))) + 'px');
   if (el.type === 'ticker') d.push('--speed: ' + ({ slow: '45s', normal: '28s', fast: '15s' }[p.speed || 'normal']));
@@ -817,7 +830,7 @@ const RENDER = {
     const p = el.props, imgs = (p.images || []).filter(i => i.src);
     if (!imgs.length) { if (o.edit) editPlaceholder(w, site, el, o, 'Add pictures to this gallery in the panel on the right'); return; }
     const lb = p.lightbox && !o.edit;
-    w.open('<div' + elAttrs(site, el, o, 'wv-gallery', { attrs: { 'data-lightbox': lb ? true : null } }) + '>');
+    w.open('<div' + elAttrs(site, el, o, 'wv-gallery', { cls: p.ratio === 'original' ? 'is-masonry' : null, attrs: { 'data-lightbox': lb ? true : null } }) + '>');
     imgs.forEach((im, i) => {
       w.open('<figure>');
       const tag = imgTag(o, im.src, im.alt);
@@ -835,7 +848,7 @@ const RENDER = {
     o.counts.slideshow = (o.counts.slideshow || 0) + 1;
     const label = p.label || ('Slideshow' + (o.counts.slideshow > 1 ? ' ' + o.counts.slideshow : ''));
     w.open('<section' + elAttrs(site, el, o, 'wv-slideshow', {
-      cls: p.kenburns ? 'kenburns' : null,
+      cls: [p.kenburns ? 'kenburns' : null, p.fit === 'whole' ? 'fit-whole' : null],
       attrs: { 'aria-roledescription': 'carousel', 'aria-label': label, 'data-autoplay': (!o.edit && +p.autoplay) ? +p.autoplay : null }
     }) + '>');
     w.open('<div class="wv-slides"' + (o.edit ? '' : ' tabindex="0"') + '>');
@@ -985,7 +998,12 @@ const RENDER = {
 
 function renderElement(w, site, el, o) {
   const fn = RENDER[el.type];
-  if (fn) fn(w, site, el, o);
+  if (!fn) return;
+  if (!o.capture) { fn(w, site, el, o); return; }
+  const t = new Writer(); t.d = w.d;
+  fn(t, site, el, o);
+  o.capture.set(el.id, t.toString());
+  t.out.forEach(l => w.out.push(l));
 }
 
 function renderSection(w, site, s, o) {
@@ -1133,11 +1151,14 @@ function pageDocument(site, page, o, inc) {
   w.line('<script>document.documentElement.classList.add("js");<\/script>');
   if (inc.inlineCss != null) { w.open('<style>'); w.raw(inc.inlineCss.trimEnd()); w.close('</style>'); }
   else w.line('<link rel="stylesheet" href="' + inc.cssHref + '">');
+  if (inc.inlineCss == null && customCss(site, o)) w.line('<link rel="stylesheet" href="css/custom.css">');
   if (inc.jsHref) w.line('<script src="' + inc.jsHref + '" defer><\/script>');
+  if (!inc.inlineJs && inc.cssHref && customJs(site)) w.line('<script src="js/custom.js" defer><\/script>');
   w.close('</head>');
   w.open('<body>');
   w.raw(renderBody(site, page, o));
   if (inc.inlineJs) { w.open('<script>'); w.raw(inc.inlineJs.trimEnd()); w.close('<\/script>'); }
+  if (inc.inlineCustomJs) { w.open('<script>'); w.raw(inc.inlineCustomJs.trimEnd().replace(/<\/script/gi, '<\\/script')); w.close('<\/script>'); }
   w.close('</body>');
   w.close('</html>');
   return w.toString() + '\n';
@@ -1146,6 +1167,35 @@ function pageDocument(site, page, o, inc) {
 /* ------------------------------------------------------------------ */
 /* Public API                                                          */
 /* ------------------------------------------------------------------ */
+
+// Your own CSS and JavaScript (Code view › custom.css / custom.js). Pictures can be used as ezy-asset:NAME.
+function customCss(site, o) {
+  const css = String((site.custom && site.custom.css) || '');
+  if (!css.trim()) return '';
+  const url = (o && (o.cssAssetUrl || o.assetUrl)) || (n => n);
+  return css.replace(ASSET_TOKEN, (m, n) => url(n));
+}
+function customJs(site) {
+  const js = String((site.custom && site.custom.js) || '');
+  return js.trim() ? js : '';
+}
+
+// The finished HTML of a page, split into its parts, so the Code view can tell
+// which sections and elements someone changed.
+function pageFragments(site, page, o) {
+  o = exportOpts(o || {});
+  o.files = pageFiles(site);
+  const capture = new Map();
+  const hw = new Writer(); renderHeader(hw, site, page, o);
+  const fw = new Writer(); renderFooter(fw, site, page, o);
+  const so = Object.assign({}, o, { counts: {}, capture });
+  const sections = page.sections.map((s, i) => {
+    const w = new Writer();
+    renderSection(w, site, s, Object.assign({}, so, { eager: i === 0 }));
+    return { id: s.id, html: w.toString(), elements: s.columns.map(c => c.elements.map(el => ({ id: el.id, html: capture.get(el.id) || '' }))) };
+  });
+  return { title: pageTitle(site, page), description: page.description || '', header: hw.toString(), footer: fw.toString(), sections };
+}
 
 function cleanDomain(d) {
   return String(d || '').trim().toLowerCase().replace(/^[a-z]+:\/\//, '').replace(/[/?#].*$/, '').replace(/\.$/, '');
@@ -1187,6 +1237,9 @@ function generateSite(site, o) {
   site.pages.forEach(p => { out[files[p.id]] = pageDocument(site, p, o, { cssHref: 'css/style.css', jsHref: js ? 'js/site.js' : null }); });
   out['css/style.css'] = buildCss(site, o);
   if (js) out['js/site.js'] = js;
+  const ccss = customCss(site, o), cjs = customJs(site);
+  if (ccss) out['css/custom.css'] = ccss.trimEnd() + '\n';
+  if (cjs) out['js/custom.js'] = cjs.trimEnd() + '\n';
   const base = siteUrl(site);
   if (base) {
     const day = new Date().toISOString().slice(0, 10);
@@ -1204,14 +1257,15 @@ function generateSite(site, o) {
 function renderEditPage(site, page, o) {
   const opts = Object.assign({ edit: true, files: pageFiles(site) }, o, { edit: true });
   if (!opts.cssAssetUrl) opts.cssAssetUrl = opts.assetUrl;
-  return { css: buildCss(site, opts, [page]), body: renderBody(site, page, opts), fontsHref: fontsHref(site) };
+  return { css: buildCss(site, opts, [page]) + (customCss(site, opts) ? '\n/* Your own CSS */\n' + customCss(site, opts) : ''), body: renderBody(site, page, opts), fontsHref: fontsHref(site) };
 }
 
 // A single self-contained page (inline CSS and JS) for previews.
 function renderPreviewPage(site, page, o) {
   const opts = Object.assign({}, o, { edit: false, files: pageFiles(site) });
   if (!opts.cssAssetUrl) opts.cssAssetUrl = opts.assetUrl;
-  return pageDocument(site, page, opts, { inlineCss: buildCss(site, opts), inlineJs: buildJs(site) });
+  const ccss = customCss(site, opts);
+  return pageDocument(site, page, opts, { inlineCss: buildCss(site, opts) + (ccss ? '\n/* Your own CSS */\n' + ccss : ''), inlineJs: buildJs(site), inlineCustomJs: customJs(site) });
 }
 
 // Friendly checks before publishing.
@@ -1250,7 +1304,7 @@ function checkSite(site, assetInfo) {
 return {
   THEME_KEYS, THEME_LABELS, PALETTES, FONTS, FONT_PAIRS, SIZES, LAYOUTS, RATIOS,
   generateSite, renderEditPage, renderPreviewPage, buildCss, buildJs, checkSite,
-  pageFiles, pageTitle, usedAssets, exportPath, isUrl, navTree, siteUrl, cleanDomain, fontsHref, videoEmbed, slugify,
+  pageFiles, pageTitle, usedAssets, pageFragments, customCss, customJs, linkHref, exportPath, isUrl, navTree, siteUrl, cleanDomain, fontsHref, videoEmbed, slugify,
   colorCss, resolveHex, onColor, contrast, luminance, validHex, mixHex, esc, escAttr
 };
 }));

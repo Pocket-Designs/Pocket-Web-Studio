@@ -119,7 +119,7 @@ let history = [], hIndex = -1, lastKey = null, lastTime = 0;
 let drag = null, dropTarget = null;
 let previewPage = null;
 let codeFile = 'index.html';
-let appVersion = '2.1.0';
+let appVersion = '2.2.0';
 const LOGO_SRC = (document.querySelector('.brand-logo') || {}).src || 'logo.png';
 
 const uid = () => Math.random().toString(36).slice(2, 7) + Date.now().toString(36).slice(-3);
@@ -260,6 +260,7 @@ function normalizeSite(s) {
   s.footer = Object.assign({}, base.footer, s.footer || {});
   s.settings = Object.assign({}, base.settings, s.settings || {});
   if (!Array.isArray(s.header.menuLinks)) s.header.menuLinks = [];
+  s.custom = Object.assign({ css: '', js: '' }, s.custom || {});
   if (!Array.isArray(s.pages) || !s.pages.length) s.pages = base.pages;
   s.pages.forEach(p => {
     p.sections = p.sections || [];
@@ -1408,20 +1409,24 @@ const CONTENT = {
   image: el => [
     imageCtl(el.props.src, v => setEl(el, () => { el.props.src = v; }, null, { panel: true })),
     field('Describe the picture', inputCtl(el.props.alt, v => setEl(el, () => { el.props.alt = v; }, 'alt', { render: false }), { placeholder: 'e.g. A loaf of sourdough on a wooden board' }), 'Read aloud to people who can’t see the picture. Search engines use it too.'),
-    field('Shape', segCtl(SHAPE_OPTS, el.props.shape || '', v => setEl(el, () => { el.props.shape = v; })), 'Crops the picture to a shape. “Original” keeps it as taken.'),
+    field('Shape', segCtl(SHAPE_OPTS, el.props.shape || '', v => setEl(el, () => { el.props.shape = v; }, null, { panel: true })), 'Crops the picture to a shape. “Original” keeps it as taken.'),
+    el.props.shape ? focusField(el) : null,
     field('Caption', inputCtl(el.props.caption, v => setEl(el, () => { el.props.caption = v; }, 'caption'), { placeholder: 'Optional text under the picture' })),
     field('When clicked, go to', linkCtl(el.props.link, el.props.newTab, (l, t) => setEl(el, () => { el.props.link = l; el.props.newTab = t; }, 'link')))
   ],
   gallery: el => [
     listEditor(el, 'images', { addLabel: 'Add pictures', addTitle: 'Add pictures to the gallery' }),
-    field('Pictures per row', segCtl([2, 3, 4, 5].map(n => ({ v: n, label: String(n) })), el.props.columns || 3, v => setEl(el, () => { el.props.columns = v; }))),
-    field('Shape', segCtl([{ v: 'square', label: 'Square' }, { v: 'landscape', label: 'Landscape' }, { v: 'portrait', label: 'Portrait' }, { v: 'original', label: 'As taken' }], el.props.ratio || 'square', v => setEl(el, () => { el.props.ratio = v; }))),
+    field('Pictures per row', segCtl([2, 3, 4, 5, 6].map(n => ({ v: n, label: String(n) })), el.props.columns || 3, v => setEl(el, () => { el.props.columns = v; })), 'The most per row. Narrow columns and phones show fewer, so pictures never get too small.'),
+    field('Shape', segCtl([{ v: 'square', label: 'Square' }, { v: 'landscape', label: 'Landscape' }, { v: 'portrait', label: 'Portrait' }, { v: 'original', label: 'As taken' }], el.props.ratio || 'square', v => setEl(el, () => { el.props.ratio = v; }, null, { panel: true })), el.props.ratio === 'original' ? 'Every picture keeps its own shape, neatly stacked in columns.' : null),
+    el.props.ratio !== 'original' ? focusField(el) : null,
     field('Space between', segCtl([{ v: 'none', label: 'None' }, { v: 'sm', label: 'S' }, { v: 'md', label: 'M' }, { v: 'lg', label: 'L' }], el.props.gap || 'md', v => setEl(el, () => { el.props.gap = v; }))),
     toggleCtl('Click a picture to see it larger', el.props.lightbox, v => setEl(el, () => { el.props.lightbox = v; }))
   ],
   slideshow: el => [
     listEditor(el, 'slides', { addLabel: 'Add slides', addTitle: 'Add pictures to the slideshow' }),
-    field('Shape', segCtl([{ v: 'landscape', label: 'Classic' }, { v: 'wide', label: 'Wide' }, { v: 'panorama', label: 'Panorama' }], el.props.ratio || 'wide', v => setEl(el, () => { el.props.ratio = v; }))),
+    field('Shape', segCtl([{ v: 'landscape', label: 'Classic' }, { v: 'wide', label: 'Wide' }, { v: 'panorama', label: 'Panorama' }], el.props.ratio || 'wide', v => setEl(el, () => { el.props.ratio = v; })), 'On phones and in narrow columns the slideshow gets a little taller so pictures stay clear.'),
+    field('Pictures', segCtl([{ v: 'fill', label: 'Fill the frame' }, { v: 'whole', label: 'Show whole picture' }], el.props.fit || 'fill', v => setEl(el, () => { el.props.fit = v; }, null, { panel: true })), el.props.fit === 'whole' ? 'Nothing is cut off. Pictures of a different shape get dark bars at the sides.' : 'Pictures are cropped to fill the slideshow.'),
+    el.props.fit !== 'whole' ? focusField(el) : null,
     field('Change slide every', segCtl([{ v: 0, label: 'Off' }, { v: 3, label: '3 s' }, { v: 5, label: '5 s' }, { v: 8, label: '8 s' }], +el.props.autoplay || 0, v => setEl(el, () => { el.props.autoplay = v; })), 'Slides stop moving while someone points at them, and for visitors who prefer less motion.'),
     toggleCtl('Show arrows', el.props.arrows !== false, v => setEl(el, () => { el.props.arrows = v; })),
     toggleCtl('Show dots', el.props.dots !== false, v => setEl(el, () => { el.props.dots = v; })),
@@ -1458,6 +1463,7 @@ const CONTENT = {
     imageCtl(el.props.image, v => setEl(el, () => { el.props.image = v; }, null, { panel: true }), { removable: true }),
     el.props.image ? field('Describe the picture', inputCtl(el.props.alt, v => setEl(el, () => { el.props.alt = v; }, 'alt', { render: false }))) : null,
     el.props.image ? field('Picture shape', segCtl(SHAPE_OPTS.filter(o => o.v !== 'circle').map(o => o.v === '' ? { v: '', label: 'Landscape' } : o).filter(o => o.v !== 'landscape'), el.props.imageShape || '', v => setEl(el, () => { el.props.imageShape = v; }))) : null,
+    el.props.image ? focusField(el) : null,
     field('Title', inputCtl(el.props.title, v => setEl(el, () => { el.props.title = v; }, 'title'))),
     field('Text', inputCtl(el.props.text, v => setEl(el, () => { el.props.text = v; }, 'text'), { multiline: true, rows: 3 })),
     field('Button text', inputCtl(el.props.buttonText, v => setEl(el, () => { el.props.buttonText = v; }, 'btn'), { placeholder: 'Leave empty for no button' })),
@@ -1526,6 +1532,8 @@ function widthCtl(el) {
   const presets = segCtl([{ v: 25, label: '¼' }, { v: 50, label: '½' }, { v: 75, label: '¾' }, { v: 100, label: 'Full' }], [25, 50, 75, 100].includes(cur) ? cur : null, v => setEl(el, () => { st.width = String(v); }, null, { panel: true }));
   return h('div', { class: 'width-ctl' }, r, presets);
 }
+const FOCUS_OPTS = [{ v: 'top', label: 'Top' }, { v: 'center', label: 'Middle' }, { v: 'bottom', label: 'Bottom' }];
+const focusField = el => field('Keep in view', segCtl(FOCUS_OPTS, el.props.focus || 'center', v => setEl(el, () => { el.props.focus = v; })), 'Which part of each picture to keep when it’s cropped to fit. Choose Top for people’s faces.');
 const SHAPE_OPTS = [{ v: '', label: 'Original' }, { v: 'square', label: 'Square' }, { v: 'landscape', label: 'Landscape' }, { v: 'portrait', label: 'Portrait' }, { v: 'wide', label: 'Wide' }, { v: 'circle', label: 'Circle' }];
 function stylePanel(el) {
   const sup = STYLE_SUPPORT[el.type] || [];
@@ -1808,6 +1816,7 @@ function setLeftTab(t) {
 /* ================================================================== */
 
 function setMode(m) {
+  if (mode === 'code' && m !== 'code' && hasCodeDrafts()) { confirmCodeDrafts(() => setMode(m)); return; }
   mode = m;
   $('#app').dataset.mode = m;
   $$('[data-mode-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.modeBtn === m)));
@@ -1853,20 +1862,145 @@ function showPreview(page) {
   }
 }
 
-function renderCodeView() {
+/* ---------- Code view: see and edit the code ---------- */
+
+const codeDraft = {};          // file → text typed but not applied yet
+let codeCache = {};            // the files as the design makes them
+let codeEscape = false;
+const CUSTOM_FILES = ['css/custom.css', 'js/custom.js'];
+const codeKind = f => /\.css$/.test(f) ? 'css' : /\.js$/.test(f) ? 'js' : /\.html$/.test(f) ? 'html' : 'text';
+const pageForFile = f => { const files = Gen.pageFiles(site); return site.pages.find(p => files[p.id] === f) || null; };
+const codeEditable = f => CUSTOM_FILES.includes(f) || !!pageForFile(f);
+function codeFiles() {
   const out = Gen.generateSite(site, { assetInfo });
-  const names = Object.keys(out.files);
+  const files = Object.assign({}, out.files);
+  files['css/custom.css'] = (site.custom && site.custom.css) || '';
+  files['js/custom.js'] = (site.custom && site.custom.js) || '';
+  const order = n => /\.html$/.test(n) ? 0 : n === 'css/style.css' ? 1 : n === 'css/custom.css' ? 2 : n === 'js/site.js' ? 3 : n === 'js/custom.js' ? 4 : 5;
+  const names = Object.keys(files).sort((a, b) => order(a) - order(b));
+  return { files, names, assets: out.assets };
+}
+const hasCodeDrafts = () => Object.keys(codeDraft).length > 0;
+function codeInfoText(f) {
+  const pg = pageForFile(f);
+  if (pg) return 'The finished code for the “' + pg.name + '” page. Change it, then press Apply changes (Ctrl+Enter) to update your design. The header, footer and colours come from your settings.';
+  return {
+    'css/style.css': 'Made from your design, so it can’t be changed here. Put your own CSS rules in custom.css.',
+    'css/custom.css': 'Your own CSS. It comes after the design’s styles, so your rules win. To use one of your pictures, write ezy-asset:picture-name.',
+    'js/site.js': 'Made by Pocket-Web-Studio for menus, slideshows and effects. Put your own JavaScript in custom.js.',
+    'js/custom.js': 'Your own JavaScript. It runs on every page of your published website and in Preview, but not while you edit.'
+  }[f] || 'Made from your website settings.';
+}
+function renderCodeView() {
+  const { files, names, assets: used } = codeFiles();
+  codeCache = files;
   if (!names.includes(codeFile)) codeFile = names[0];
   const tabs = $('#codeTabs');
   tabs.innerHTML = '';
-  names.forEach(n => tabs.appendChild(h('button', { type: 'button', role: 'tab', 'aria-selected': String(n === codeFile), onclick: () => { codeFile = n; renderCodeView(); } }, n)));
-  const code = out.files[codeFile];
-  const kind = /\.css$/.test(codeFile) ? 'css' : /\.js$/.test(codeFile) ? 'js' : 'html';
-  const lines = code.split('\n').length;
-  $('#codeLines').textContent = Array.from({ length: lines }, (_, i) => i + 1).join('\n');
-  $('#codeBody').innerHTML = highlight(code, kind);
-  const imgCount = Object.keys(out.assets).length;
-  $('#codeInfo').textContent = names.filter(n => /\.html$/.test(n)).length + ' pages, 1 stylesheet' + (out.files['js/site.js'] ? ', 1 script' : '') + ' and ' + imgCount + ' picture' + (imgCount === 1 ? '' : 's') + '. Pocket-Web-Studio writes this for you as you build. ' + (DESKTOP ? 'Publish saves it all to a folder.' : '');
+  names.forEach(n => tabs.appendChild(h('button', { type: 'button', role: 'tab', 'aria-selected': String(n === codeFile), title: codeDraft[n] != null ? 'Changes not applied yet' : null, onclick: () => { codeFile = n; renderCodeView(); } },
+    n, codeDraft[n] != null ? h('span', { class: 'code-dot', 'aria-label': ' (not applied)' }, '•') : null)));
+  const editable = codeEditable(codeFile);
+  const text = codeDraft[codeFile] != null ? codeDraft[codeFile] : files[codeFile];
+  const input = $('#codeInput');
+  input.readOnly = !editable;
+  input.setAttribute('aria-label', (editable ? 'Edit ' : 'Read-only ') + codeFile);
+  if (input.value !== text) input.value = text;
+  paintCode();
+  $('#codeApply').disabled = codeDraft[codeFile] == null;
+  $('#codeRevert').disabled = codeDraft[codeFile] == null;
+  $('#codeApply').hidden = !editable;
+  $('#codeRevert').hidden = !editable;
+  const imgCount = Object.keys(used).length;
+  $('#codeInfo').innerHTML = '';
+  $('#codeInfo').append(h('span', { class: 'code-badge' + (editable ? ' edit' : '') }, editable ? 'You can edit this' : 'Read-only'), ' ', codeInfoText(codeFile),
+    h('span', { class: 'code-stats' }, ' · ' + names.filter(n => /\.html$/.test(n)).length + ' pages and ' + imgCount + ' picture' + (imgCount === 1 ? '' : 's') + ' in all.'));
+}
+function paintCode() {
+  const input = $('#codeInput');
+  const code = input.value;
+  $('#codeLines').textContent = Array.from({ length: code.split('\n').length }, (_, i) => i + 1).join('\n');
+  const kind = codeKind(codeFile);
+  $('#codeBody').innerHTML = (kind === 'text' ? Gen.esc(code) : highlight(code, kind)) + '\n';
+}
+let paintT = 0;
+function onCodeInput() {
+  const input = $('#codeInput');
+  if (input.readOnly) return;
+  if (input.value === codeCache[codeFile]) delete codeDraft[codeFile]; else codeDraft[codeFile] = input.value;
+  cancelAnimationFrame(paintT);
+  paintT = requestAnimationFrame(paintCode);
+  $('#codeApply').disabled = codeDraft[codeFile] == null;
+  $('#codeRevert').disabled = codeDraft[codeFile] == null;
+  const tab = $$('#codeTabs [role=tab]').find(b => b.getAttribute('aria-selected') === 'true');
+  if (tab) {
+    const dot = tab.querySelector('.code-dot');
+    if (codeDraft[codeFile] != null && !dot) tab.appendChild(h('span', { class: 'code-dot', 'aria-label': ' (not applied)' }, '•'));
+    if (codeDraft[codeFile] == null && dot) dot.remove();
+  }
+}
+function onCodeKey(e) {
+  const input = e.target;
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); applyCode(codeFile); return; }
+  if (e.key === 'Escape') { codeEscape = true; return; }
+  if (e.key === 'Tab' && !codeEscape && !input.readOnly && !e.ctrlKey && !e.altKey) {
+    e.preventDefault();
+    const { selectionStart: a, selectionEnd: b, value: v } = input;
+    if (e.shiftKey) {
+      const ls = v.lastIndexOf('\n', a - 1) + 1;
+      if (v.slice(ls, ls + 2) === '  ') { input.setRangeText('', ls, ls + 2, 'preserve'); }
+    } else input.setRangeText('  ', a, b, 'end');
+    onCodeInput();
+    return;
+  }
+  codeEscape = false;
+}
+// Puts typed code into the design. Returns false if it couldn't.
+function applyCode(f, quiet) {
+  const text = codeDraft[f];
+  if (text == null) return true;
+  try {
+    if (f === 'css/custom.css' || f === 'js/custom.js') {
+      site.custom = site.custom || { css: '', js: '' };
+      site.custom[f === 'css/custom.css' ? 'css' : 'js'] = text;
+      delete codeDraft[f];
+      changed({ render: f === 'css/custom.css', key: null });
+      if (!quiet) toast(f === 'css/custom.css' ? 'Your CSS is applied' : 'Your JavaScript is saved. See it working in Preview.');
+    } else {
+      const pg = pageForFile(f);
+      if (!pg) throw new Error('This page no longer exists.');
+      const r = PocketCodeSync.applyPage(site, pg, text, { Gen, T, ctx, assetInfo, assetNames: Object.keys(assets), sanitizeRich, labels: T.LABELS });
+      delete codeDraft[f];
+      if (r.changed) {
+        pg.sections = r.sections; pg.title = r.title; pg.description = r.description;
+        if (sel && sel.kind === 'el' && !findElement(sel.id)) sel = null;
+        if (sel && sel.kind === 'section' && !pg.sections.some(x => x.id === sel.id) && pageId === pg.id) sel = null;
+        changed({ pages: true, panel: true });
+      }
+      if (r.notes.length) {
+        modal({ title: 'Code applied', body: h('div', null, h('p', { class: 'lead' }, r.changed ? 'Your design is updated. A few things to know:' : 'Nothing in your design changed. A few things to know:'), h('ul', { class: 'steps' }, [...new Set(r.notes)].map(t => h('li', null, t)))), actions: [{ label: 'OK', primary: true }] });
+      } else if (!quiet) toast(r.changed ? 'Your design is updated' : 'No changes to apply');
+    }
+    if (mode === 'code') renderCodeView();
+    return true;
+  } catch (err) {
+    modal({ title: 'Couldn’t apply the code', body: h('p', null, err.message || String(err)), actions: [{ label: 'Keep editing', primary: true }] });
+    return false;
+  }
+}
+function applyAllCode() { return Object.keys(codeDraft).every(f => applyCode(f, true)); }
+function revertCode(f) { delete codeDraft[f]; renderCodeView(); }
+function confirmCodeDrafts(then) {
+  if (!hasCodeDrafts()) { then(); return; }
+  const n = Object.keys(codeDraft);
+  modal({
+    title: 'Apply your code changes?',
+    body: h('p', null, 'You changed ' + n.join(', ') + ' but haven’t applied ' + (n.length > 1 ? 'them' : 'it') + ' yet.'),
+    actions: [
+      { label: 'Keep editing' },
+      { label: 'Throw away', danger: true, onClick: () => { n.forEach(f => delete codeDraft[f]); then(); } },
+      { label: 'Apply', primary: true, onClick: () => { if (applyAllCode()) then(); } }
+    ]
+  });
 }
 
 /* ================================================================== */
@@ -2088,6 +2222,7 @@ function packAssets() {
   return out;
 }
 async function saveProject(as) {
+  if (hasCodeDrafts() && !applyAllCode()) return false;
   if (!DESKTOP) { saveDraftNow(); toast('Saved in this browser'); return true; }
   try {
     const r = await api.saveProject(as ? null : projectPath, { site, assets: packAssets() }, projectName);
@@ -2562,12 +2697,14 @@ function wireTopbar() {
   $$('[data-mode-btn]').forEach(b => b.addEventListener('click', () => setMode(b.dataset.modeBtn)));
   $$('[data-dev]').forEach(b => b.addEventListener('click', () => setDevice(b.dataset.dev)));
   $$('.ltab').forEach(b => b.addEventListener('click', () => setLeftTab(b.dataset.tab)));
+  $('#codeInput').addEventListener('input', onCodeInput);
+  $('#codeInput').addEventListener('keydown', onCodeKey);
+  $('#codeApply').addEventListener('click', () => applyCode(codeFile));
+  $('#codeRevert').addEventListener('click', () => revertCode(codeFile));
   $('#copyCode').addEventListener('click', () => {
-    const out = Gen.generateSite(site, { assetInfo });
-    const text = out.files[codeFile];
+    const text = $('#codeInput').value;
     navigator.clipboard.writeText(text).then(() => toast('Copied ' + codeFile), () => {
-      const r = document.createRange(); r.selectNodeContents($('#codeBody'));
-      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+      const ta = $('#codeInput'); ta.focus(); ta.select();
       toast('Press Ctrl+C to copy the selected code.');
     });
   });
@@ -2578,7 +2715,7 @@ function wireTopbar() {
 
 window.__weaver = {
   get site() { return site; }, get sel() { return sel; }, assets, importWebsite, importFiles: async list => { const r = await window.EzyImporter.importSite(list, { Gen, T, ctx, sanitizeRich, importImageBytes: (n, m, b) => importImageFile(new File([b], n, { type: m })), importVideoBytes: (n, m, b) => importVideoFile(new File([b], n, { type: m })), importRawBytes }); loadSite(r.site, Object.fromEntries(Object.keys(assets).map(n => [n, assets[n]])), null, r.site.name); return r.report; },
-  addElement, addSectionTemplate, select, applyDrop, newSite, setMode, setDevice, setLeftTab, undoRedo, exportFiles, renderCanvas, findElement, computeTarget, sanitizeRich, publish
+  addElement, addSectionTemplate, select, switchPage, applyDrop, newSite, setMode, setDevice, setLeftTab, undoRedo, exportFiles, renderCanvas, findElement, computeTarget, sanitizeRich, publish
 };
 
 async function boot() {

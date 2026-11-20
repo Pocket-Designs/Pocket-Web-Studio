@@ -60,10 +60,12 @@
     <div class="codeview" id="codeview" hidden>
       <div class="code-head">
         <div class="code-tabs" id="codeTabs" role="tablist" aria-label="Files"></div>
+        <button class="tbtn" id="codeRevert" type="button" title="Go back to the code as it was"><span class="ico" data-icon="undo"></span><span class="lbl">Undo my changes</span></button>
+        <button class="tbtn primary" id="codeApply" type="button" title="Update your design with this code (Ctrl+Enter)"><span class="ico" data-icon="check"></span><span class="lbl">Apply changes</span></button>
         <button class="tbtn" id="copyCode" type="button"><span class="ico" data-icon="copy"></span><span class="lbl">Copy file</span></button>
       </div>
       <p class="code-info" id="codeInfo"></p>
-      <div class="code-scroll"><pre class="code-lines" id="codeLines" aria-hidden="true"></pre><pre class="code-body"><code id="codeBody"></code></pre></div>
+      <div class="code-scroll"><pre class="code-lines" id="codeLines" aria-hidden="true"></pre><div class="code-edit"><pre class="code-body" aria-hidden="true"><code id="codeBody"></code></pre><textarea class="code-input" id="codeInput" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Code"></textarea></div></div>
     </div>
   </main>
 
@@ -77,6 +79,7 @@
 <script src="templates.js"></script>
 <script src="highlight.js"></script>
 <script src="importer.js"></script>
+<script src="codesync.js"></script>
 <script src="editor.js"></script>
 </body>
 </html>

@@ -1,3 +1,7 @@
+<div align="center">
+<img width="224" height="224" alt="Pocket-Web-Studio icon" src="../build/icon.png" />
+</div>
+
 # Pocket-Web-Studio Developer Guide
 
 This guide is for anyone changing Pocket-Web-Studio's own code. It explains how the app is put together, where things live, and how to test, build and release it.
@@ -79,12 +83,15 @@ renderer/
   generator.js          Model → HTML, CSS and JavaScript; site checks
   templates.js          Element list and defaults, ready-made sections, starters
   importer.js           Existing website folder → model
+  codesync.js           Code edited in the Code view → model
   highlight.js          Syntax colouring for the Code view
   styles.css            The editor's own look
   logo.png              App logo (see Licence and credits)
 test/
   generate.js           Builds sample sites and validates every page
   htmlvalidate.json     html-validate rules
+tools/
+  build-web.js          Builds the one-file browser version (npm run build:web)
 build/
   icon.png, icon.ico    App icon (see Licence and credits)
   after-pack.js         Stamps icon and version details into the Windows .exe
@@ -95,7 +102,7 @@ docs/
   DEVELOPER-GUIDE.md    This file
 ```
 
-Internal names still say "weaver" in places (the `window.weaver` bridge, `WeaverGen`, `WeaverTemplates`, the `weaver-preview:` protocol, `data-wv` markers) and "Ezy" in one (`EzyImporter`). These are from earlier product names and are kept so older project files and code keep working. Don't rename them without updating every reference.
+Internal names still say "weaver" in places (the `window.weaver` bridge, `WeaverGen`, `WeaverTemplates`, the `weaver-preview:` protocol, `data-wv` markers) and "Ezy" in two (`EzyImporter`, and `ezy-asset:` picture tokens). These are from earlier product names and are kept so older project files and code keep working. Don't rename them without updating every reference.
 
 ---
 
@@ -114,7 +121,7 @@ Internal names still say "weaver" in places (the `window.weaver` bridge, `Weaver
 │ editor.js  ── changes ──▶  site model (JSON)  ──▶  generator.js ──▶ canvas / preview / │
 │    ▲                                                     │            export files     │
 │    └──────── templates.js (elements, sections) ──────────┘                             │
-│ importer.js (folder → model)   highlight.js (Code view)                                │
+│ importer.js (folder → model)   codesync.js (Code view → model)   highlight.js          │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -145,6 +152,7 @@ site = {
     parent,                                     // optional: id of a top-level page (drop-downs, one level)
     sections: [section, …]
   }],
+  custom: { css, js },                         // custom.css and custom.js from the Code view
   settings: { language, favicon, publishFolder,
               domain, host, hostId,             // domain wizard
               spellIgnore: [] }
@@ -166,6 +174,8 @@ element = {
 ```
 
 **Element types:** `heading`, `text`, `button`, `link`, `image`, `divider`, `spacer`, `gallery`, `slideshow`, `video`, `map`, `ticker`, `card`, `quote`, `table`, `faq`, `form`, `html`.
+
+**Picture fitting props:** `focus` (`top` | `center` | `bottom`) on `image`, `card`, `gallery` and `slideshow` sets which part of a cropped picture stays in view (`--focus` → `object-position`). Galleries use `columns` (1–6, the most per row), `ratio` (`square` | `landscape` | `portrait` | `original`, where `original` gives a masonry layout) and `gap`. Slideshows use `ratio` (`landscape` | `wide` | `panorama`) and `fit` (`fill` | `whole`).
 
 **Pictures and other files** aren't stored in the model. The model refers to them by **asset name**. The editor keeps an asset table, `{ name: { mime, w, h, bytes } }`, and shows each one through a `blob:` URL. A name can also be a full `https://` address (`Gen.isUrl`). In "Own code" elements, `ezy-asset:NAME` refers to an asset.
 
@@ -191,6 +201,8 @@ Main exports:
 | `buildCss(site, opts, pages)` | The stylesheet (only the rules the pages need) |
 | `buildJs(site)` | The site script, or nothing if no feature needs it |
 | `checkSite(site, assetInfo)` | The pre-publish check: `[{ level, text, pageId, id, action }]` |
+| `pageFragments(site, page, opts)` | A page's finished HTML split into header, footer, sections and elements, used by the Code view to see what changed |
+| `customCss(site, o)`, `customJs(site)` | The user's own CSS (with `ezy-asset:` pictures resolved) and JavaScript |
 | `pageFiles(site)` | `{ pageId: 'index.html' | 'about.html' | … }` |
 | `navTree(site)` | The header menu: top-level items with drop-down children |
 | `siteUrl(site)`, `cleanDomain(d)` | The website's https address, for sitemaps and canonical links |
@@ -205,6 +217,7 @@ How it's put together:
   - `index.html`, then one file per page (from its slug),
   - `css/style.css`,
   - `js/site.js` (only if needed),
+  - `css/custom.css` and `js/custom.js` (only if the user wrote any; linked after the generated files),
   - `images/` and `media/`,
   - `sitemap.xml` and `robots.txt` when a domain is set,
   - `CNAME` when the host is GitHub Pages.
@@ -215,6 +228,7 @@ How it's put together:
 - Escape all user text with `esc()` / `escAttr()`.
 - Pages must work without JavaScript; the script only adds behaviour.
 - Animations go behind `prefers-reduced-motion`.
+- Layout must hold at any width. Galleries choose their own column count from `--cols` and `--min-thumb`, and slideshows use a container query (`@container (max-width: 560px)`) to get taller in narrow places.
 - Never write a literal closing script tag inside `generator.js` strings. Write `<\/script>`, because the browser version inlines this file inside a `<script>` element.
 
 ---
@@ -237,6 +251,7 @@ How it's put together:
 | Left tabs | `renderAddTab`, `renderPagesTab`, `renderDesignTab` |
 | Features | `checkSpelling`, `domainWizard`, `domainChecker`, `importWebsite`, `publish`, `templateChooser` |
 | Commands | `COMMANDS` maps menu and shortcut names to functions |
+| Code view | `renderCodeView`, `onCodeInput`, `applyCode`, `applyAllCode`, `confirmCodeDrafts`; unapplied text lives in `codeDraft` |
 | Browser drafts | `saveDraftNow`, `scheduleDraft` (browser version only, in `localStorage`) |
 
 ### The change cycle
@@ -264,6 +279,22 @@ The canvas is a same-origin `srcdoc` iframe. `#wv-root` holds the page HTML from
 | `data-wv-field="<prop>"` | an editable text field (`contenteditable`) |
 
 Text fields are `plaintext-only`, except the text element, which is rich and is cleaned by `sanitizeRich()` on commit.
+
+### The Code view and codesync.js
+
+The Code view shows every generated file in a `<textarea>` laid exactly over a syntax-coloured `<pre>` (same font, size and padding), so it can be edited while staying coloured. Page files, `css/custom.css` and `js/custom.js` can be edited; `css/style.css`, `js/site.js` and the sitemap files are read-only.
+
+Typed text is kept in `codeDraft` until it's applied (Apply changes, Ctrl+Enter, saving, or leaving the Code view). Applying a page calls `PocketCodeSync.applyPage(site, page, html, helpers)` in `renderer/codesync.js`:
+
+1. `Gen.pageFragments()` renders the page again, piece by piece.
+2. The edited document is parsed with `DOMParser`. Sections and elements are compared after normalising whitespace.
+3. Anything identical keeps its original object, with every setting.
+4. Changed headings, text, buttons, links, pictures, quotes, lines and spaces are read back into props. They keep the id and `style` of the element at the same position, so look and movement settings survive.
+5. New `<section>` markup becomes a section (layout from `cols-*`, padding from `pad-*`, and so on). Loose `<p>`, `<ul>` and `<ol>` become a text element.
+6. Anything else becomes an `html` ("Own code") element. Picture paths are turned back into `ezy-asset:` tokens.
+7. `<title>` and `<meta name="description">` update the page. Header and footer edits are ignored with a note, because they come from settings.
+
+It returns `{ sections, title, description, notes, changed }`; the editor commits it with `changed()`, so undo works.
 
 ### Desktop or browser
 
@@ -317,7 +348,7 @@ A `.pocketweb` file is JSON:
 {
   "format": "pocket-project",
   "version": 2,
-  "app": "Pocket-Web-Studio 2.1.0",
+  "app": "Pocket-Web-Studio 2.2.0",
   "saved": "2026-11-14T12:00:00.000Z",
   "site": { … },
   "assets": { "photo-1.webp": { "mime": "image/webp", "w": 1600, "h": 1067, "data": "<base64>" } }
@@ -383,7 +414,7 @@ Add `{ key, label, make(ctx) }` to `SECTIONS` in `templates.js`. `make` returns 
 
 - builds the three starter websites,
 - adds a page using **every element and every ready-made section**,
-- exercises drop-downs, menu links, links, widths, shapes, spacer height and a domain on the business site,
+- exercises drop-downs, menu links, links, widths, shapes, spacer height, picture fitting, a masonry gallery, custom CSS and JavaScript, and a domain on the business site,
 - writes everything to `test/output/`,
 - runs [html-validate](https://html-validate.org) (rules in `test/htmlvalidate.json`) on every page,
 - asserts that key output is present (drop-down markup, `sitemap.xml`, `robots.txt`, `CNAME`, canonical links).
@@ -402,6 +433,8 @@ Before a release, check in the running app:
 - [ ] Domain wizard: all four hosts, and Check my domain.
 - [ ] Save, close, reopen. Open an older `.ezyweb` or `.weaver` file.
 - [ ] Import a simple website folder.
+- [ ] Code view: change a heading and add a paragraph, apply, check the design; edit custom.css; leave with unapplied changes.
+- [ ] Galleries and slideshows at phone width, in a narrow column, with portrait and landscape pictures.
 - [ ] Publish to a folder, then open `index.html` in a browser.
 
 ### Headless
@@ -426,10 +459,10 @@ Electron can be scripted for UI tests. Load `main.js` from a small test script, 
 
 To release a new version:
 
-1. Change `"version"` in `package.json` (for example to `2.2.0`) and run `npm install` so `package-lock.json` matches.
-2. In GitHub Desktop, commit ("Version 2.2.0") and click **Push origin**.
+1. Change `"version"` in `package.json` (for example to `2.3.0`) and run `npm install` so `package-lock.json` matches. Also change `let appVersion` near the top of `renderer/editor.js`, which the browser version shows in Help › About.
+2. In GitHub Desktop, commit ("Version 2.3.0") and click **Push origin**.
 3. On GitHub.com, open the repository, then **Releases › Draft a new release**.
-4. Under **Choose a tag**, type `v2.2.0` and choose **Create new tag on publish**. Give it a title and notes, then click **Publish release**.
+4. Under **Choose a tag**, type `v2.3.0` and choose **Create new tag on publish**. Give it a title and notes, then click **Publish release**.
 5. Creating the tag starts the workflow. After about 10–15 minutes, the installers appear on that release.
 
 Or open the **Actions** tab, choose **Build**, then **Run workflow**. The release is named from the version in `package.json`. Running it again for the same version adds the new files to that release.
@@ -458,7 +491,7 @@ These are in `package.json` under `build`:
 
 ### The browser version
 
-The browser version is the renderer inlined into one HTML file: the scripts and stylesheet are inlined and the logo becomes a data URI. With no `window.weaver`, the editor switches to browser mode by itself. Keep `generator.js` free of literal closing script tags (see [The generator](#6-the-generator)).
+The browser version is the renderer inlined into one HTML file. Build it with `npm run build:web` (`tools/build-web.js`), which writes `dist/web/pocket-web-studio.html`: the scripts and stylesheet are inlined, the editor fonts and logo become data URIs, and the licence is included for Help › Licence. With no `window.weaver`, the editor switches to browser mode by itself. Keep `generator.js` free of literal closing script tags (see [The generator](#6-the-generator)).
 
 ---
 

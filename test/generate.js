@@ -37,14 +37,22 @@ for (const kind of ['blank', 'business', 'portfolio']) {
     site.pages[0].sections[0].columns[0].elements.push(T.makeElement('spacer', ctx, { height: 90 }), T.makeElement('link', ctx, { text: 'See the menu', link: 'page:' + site.pages[2].id }));
     site.settings.domain = 'https://www.harbourlane.example/';
     site.settings.host = 'github';
+    // pictures that fit, a masonry gallery, and your own CSS and JavaScript
+    site.pages[0].sections[0].columns[0].elements.push(
+      T.makeElement('slideshow', ctx, { fit: 'whole', ratio: 'panorama' }),
+      T.makeElement('gallery', ctx, { ratio: 'original', columns: 6, focus: 'top' }));
+    site.custom = { css: '.wv-heading { letter-spacing: 0.02em; background: url(ezy-asset:placeholder-1.svg); }', js: 'console.log("Hello from custom.js");' };
   }
   const out = Gen.generateSite(site, { assetInfo: name => assets[name] });
   if (kind === 'business') {
     const home = out.files['index.html'], css = out.files['css/style.css'];
     const must = [[home, 'class="has-sub'], [home, 'class="wv-sub"'], [home, 'Gift cards'], [home, 'target="_blank" rel="noopener">Order online'], [home, '<link rel="canonical" href="https://www.harbourlane.example/">'],
-      [home, 'class="wv-link'], [css, 'max-width: 60%'], [css, 'border-radius: 50%'], [css, 'height: 90px'], [out.files['CNAME'] || '', 'www.harbourlane.example'], [out.files['sitemap.xml'] || '', '<loc>https://www.harbourlane.example/visit-us.html</loc>'], [out.files['robots.txt'] || '', 'Sitemap: https://www.harbourlane.example/sitemap.xml']];
+      [home, 'class="wv-link'], [css, 'max-width: 60%'], [css, 'border-radius: 50%'], [css, 'height: 90px'], [out.files['CNAME'] || '', 'www.harbourlane.example'], [out.files['sitemap.xml'] || '', '<loc>https://www.harbourlane.example/visit-us.html</loc>'], [out.files['robots.txt'] || '', 'Sitemap: https://www.harbourlane.example/sitemap.xml'],
+      [home, 'fit-whole'], [home, 'is-masonry'], [css, '--ratio-sm: 16 / 9'], [css, '--focus: 50% 15%'], [css, '--cols: 6'], [css, '@container (max-width: 560px)'],
+      [home, '<link rel="stylesheet" href="css/custom.css">'], [home, '<script src="js/custom.js" defer></script>'],
+      [out.files['css/custom.css'] || '', 'url(../images/placeholder-1.svg)'], [out.files['js/custom.js'] || '', 'Hello from custom.js']];
     must.forEach(([text, needle]) => { if (!text.includes(needle)) throw new Error('Missing in output: ' + needle); });
-    console.log('business   drop-downs, links, sizes, shapes and domain files present');
+    console.log('business   drop-downs, links, sizes, shapes, domain files, picture fitting and custom code present');
   }
   const dir = path.join(outRoot, kind);
   for (const [p, content] of Object.entries(out.files)) {
