@@ -1,7 +1,7 @@
 # Pocket-Web-Studio — build the installers on GitHub.
 #
 # Every push and pull request runs the tests only.
-# To build the installers, push a version tag (for example v2.2.0), or press
+# To build the installers, push a version tag (for example v2.4.0), or press
 # "Run workflow" on the Actions tab. The Windows, Linux and macOS installers are
 # then attached to a GitHub Release. Nothing is uploaded as an Actions artifact.
 name: Build

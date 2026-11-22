@@ -359,3 +359,13 @@ table.dns code{word-break:break-all}
 .tbtn[hidden]{display:none}
 .code-body code{font-size:inherit;font-family:inherit}
 .code-lines{z-index:2}
+/* move to… */
+.moveto-list{display:grid;gap:4px;max-height:52vh;overflow:auto;margin:10px 0 6px;padding-right:4px}
+.moveto-page{display:flex;align-items:center;gap:6px;margin:12px 0 4px;font-size:13px}
+.moveto-page:first-child{margin-top:0}
+.moveto-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 10px;border-radius:8px;background:var(--panel)}
+.moveto-sec{display:flex;gap:8px;align-items:baseline;min-width:0}
+.moveto-sec span{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.moveto-cols{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.moveto-cols .is-here{opacity:.6}
+@media (max-width:640px){.moveto-row{flex-direction:column;align-items:stretch}}

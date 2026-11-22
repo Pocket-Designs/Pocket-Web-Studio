@@ -200,6 +200,7 @@ function buildMenu() {
       { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
       { type: 'separator' },
       item('Duplicate', 'duplicate', 'CmdOrCtrl+D'),
+      item('Move To…', 'move-to', 'CmdOrCtrl+Shift+M'),
       { type: 'separator' },
       item('Check Spelling…', 'spelling', 'F7')
     ] },

@@ -153,7 +153,7 @@ function applyPage(site, page, editedHtml, ctx) {
       const p = n.querySelector('blockquote') || n, cite = n.querySelector('figcaption');
       return make('quote', { text: textWithBreaks(p), cite: cite ? textWithBreaks(cite) : '' }, pair);
     }
-    if (tag === 'HR') return make('divider', { variant: classOf(n, 'wv-divider--') || 'line' }, pair);
+    if (tag === 'HR') return make('divider', { variant: classOf(n, 'wv-divider--') || 'line', direction: n.classList.contains('is-vertical') || n.getAttribute('aria-orientation') === 'vertical' ? 'vertical' : 'horizontal', fill: n.classList.contains('is-fill') }, pair);
     if (tag === 'DIV' && cls.contains('wv-spacer')) {
       const size = classOf(n, 'wv-spacer--');
       return make('spacer', { size: ['sm', 'md', 'lg', 'xl'].includes(size) ? size : 'md' }, pair);
@@ -220,7 +220,10 @@ function applyPage(site, page, editedHtml, ctx) {
       sec.anchor = n.getAttribute('id') || '';
       sec.label = n.getAttribute('aria-label') || '';
       const cont = n.querySelector(':scope > .wv-container');
-      if (cont) sec.valign = classOf(cont, 'valign-') || 'top';
+      if (cont) {
+        sec.valign = classOf(cont, 'valign-') || 'top';
+        sec.colLines = cont.classList.contains('col-lines') ? (['dashed', 'dotted'].includes(classOf(cont, 'col-lines--')) ? classOf(cont, 'col-lines--') : 'line') : '';
+      }
     }
     const cols = es.cols;
     const layoutCls = n && n.querySelector(':scope > .wv-container') ? classOf(n.querySelector(':scope > .wv-container'), 'cols-') : '';

@@ -9,8 +9,11 @@ A drag-and-drop website builder for people who don't write code. Build pages vis
 ## What you can do
 
 - **Drag and drop.** Drag elements and ready-made sections from the left onto your page. A blue line shows where they will land. To rearrange your page, press on anything already on it — a picture, a card, a whole section — and drag it somewhere else.
+- **Move things anywhere.** Use the arrows on an item's toolbar (or Alt+arrow keys) to move it up, down or into the next column. **Move to…** (Ctrl+Shift+M) sends it straight to any section or column, on any page. Cut, copy and paste whole items and sections (Ctrl+X, C, V), even between pages.
 - **Type on the page.** Click any text to change it. Select words in a text box to make them bold, italic, a list or a link.
-- **Resize things.** Drag the round handle on the edge of a picture, card, gallery, table, text box and more to set its width, or use the Width slider. Drag the bottom handle of a space to set its height. Crop pictures to square, portrait, wide or circle shapes.
+- **Resize things.** Drag the round handle on the edge of a picture, card, gallery, table, text box and more to set its width, or use the Width slider. Drag the bottom handle of a space or an upright line to set its height. Crop pictures to square, portrait, wide or circle shapes.
+- **Back to top and Go to bottom buttons.** Turn on round buttons that stay in the corner of the screen on every page. "Back to top" appears once visitors scroll down, and "Go to bottom" hides when they reach the end. Choose arrows only or arrows and words, the corner and the colours.
+- **Lines across and up and down.** The Line element can run across or up and down, and any section with more than one column can show lines between its columns. On phones, where columns stack, they turn into lines across.
 - **Links.** Add a Link element, turn any heading, button, picture or card into a link, or select words in a text box and press Ctrl+K. Links can go to another page, a section of a page, a web address, an email address or a phone number.
 - **Drop-down menus.** Put pages under another page to make a drop-down in the header menu, and add extra menu links to other websites. Drop-downs work with the mouse, the keyboard and on phones.
 - **Spell checker.** Mistakes are underlined as you type; right-click for suggestions. Press F7 to check every page at once, change a word everywhere, or add it to your dictionary. The dictionary follows your website's language.
@@ -54,7 +57,7 @@ npm test           # generate sample sites and check them against the HTML stand
 The repository includes a GitHub Actions workflow (`.github/workflows/build.yml`), so you don't need Windows, a Mac or Wine to build:
 
 1. Push the project to a GitHub repository. Every push and pull request runs the tests.
-2. To build the installers, create a release on GitHub.com (**Releases › Draft a new release**, type a new tag such as `v2.2.0`, then **Publish release**), or open the **Actions** tab, choose **Build** and press **Run workflow**.
+2. To build the installers, create a release on GitHub.com (**Releases › Draft a new release**, type a new tag such as `v2.4.0`, then **Publish release**), or open the **Actions** tab, choose **Build** and press **Run workflow**.
 3. GitHub builds the Windows setup (.exe), the Linux AppImage and .deb, and the macOS .dmg, and attaches them to a GitHub Release. Download them from the repository's **Releases** page.
 
 The builds are not code-signed, so Windows SmartScreen and macOS Gatekeeper will warn the first time they are opened.
@@ -78,6 +81,9 @@ Websites are saved as `.pocketweb` project files (older `.ezyweb` and `.weaver` 
 | Undo / Redo | Ctrl+Z / Ctrl+Y |
 | Duplicate selected item | Ctrl+D |
 | Delete selected item | Delete |
+| Cut / copy / paste a whole item or section | Ctrl+X / Ctrl+C / Ctrl+V |
+| Move the selected item up, down, left or right | Alt+↑ / ↓ / ← / → |
+| Move the selected item to another section or page | Ctrl+Shift+M |
 | Add a link to selected words | Ctrl+K |
 | Check spelling on every page | F7 |
 | Edit / Preview / Code | Ctrl+1 / Ctrl+2 / Ctrl+3 |

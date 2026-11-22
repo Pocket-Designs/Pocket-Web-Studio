@@ -40,7 +40,12 @@ for (const kind of ['blank', 'business', 'portfolio']) {
     // pictures that fit, a masonry gallery, and your own CSS and JavaScript
     site.pages[0].sections[0].columns[0].elements.push(
       T.makeElement('slideshow', ctx, { fit: 'whole', ratio: 'panorama' }),
-      T.makeElement('gallery', ctx, { ratio: 'original', columns: 6, focus: 'top' }));
+      T.makeElement('gallery', ctx, { ratio: 'original', columns: 6, focus: 'top' }),
+      T.makeElement('divider', ctx, { direction: 'vertical', variant: 'dashed', length: 200 }),
+      T.makeElement('divider', ctx, { direction: 'vertical', fill: true }));
+    site.jump = { top: true, bottom: true, look: 'text', side: 'left', bg: 'accent', topText: 'Back to top', bottomText: 'Go to bottom' };
+    const multi = site.pages[0].sections.find(x => x.columns.length > 1);
+    if (multi) multi.colLines = 'dotted';
     site.custom = { css: '.wv-heading { letter-spacing: 0.02em; background: url(ezy-asset:placeholder-1.svg); }', js: 'console.log("Hello from custom.js");' };
   }
   const out = Gen.generateSite(site, { assetInfo: name => assets[name] });
@@ -48,7 +53,7 @@ for (const kind of ['blank', 'business', 'portfolio']) {
     const home = out.files['index.html'], css = out.files['css/style.css'];
     const must = [[home, 'class="has-sub'], [home, 'class="wv-sub"'], [home, 'Gift cards'], [home, 'target="_blank" rel="noopener">Order online'], [home, '<link rel="canonical" href="https://www.harbourlane.example/">'],
       [home, 'class="wv-link'], [css, 'max-width: 60%'], [css, 'border-radius: 50%'], [css, 'height: 90px'], [out.files['CNAME'] || '', 'www.harbourlane.example'], [out.files['sitemap.xml'] || '', '<loc>https://www.harbourlane.example/visit-us.html</loc>'], [out.files['robots.txt'] || '', 'Sitemap: https://www.harbourlane.example/sitemap.xml'],
-      [home, 'fit-whole'], [home, 'is-masonry'], [css, '--ratio-sm: 16 / 9'], [css, '--focus: 50% 15%'], [css, '--cols: 6'], [css, '@container (max-width: 560px)'],
+      [home, 'fit-whole'], [home, 'wv-jump wv-jump--left wv-jump--text'], [home, 'href="#wv-page-end"'], [home, 'id="wv-page-end"'], [css, '.wv-jump-btn.is-hidden'], [css, '--j-bg: var(--c-accent)'], [out.files['js/site.js'] || '', 'wv-jump-top'], [home, 'aria-orientation="vertical"'], [home, 'is-fill'], [home, 'col-lines col-lines--dotted'], [css, '--len: 200px'], [css, '.col-lines > .wv-col + .wv-col::before'], [home, 'is-masonry'], [css, '--ratio-sm: 16 / 9'], [css, '--focus: 50% 15%'], [css, '--cols: 6'], [css, '@container (max-width: 560px)'],
       [home, '<link rel="stylesheet" href="css/custom.css">'], [home, '<script src="js/custom.js" defer></script>'],
       [out.files['css/custom.css'] || '', 'url(../images/placeholder-1.svg)'], [out.files['js/custom.js'] || '', 'Hello from custom.js']];
     must.forEach(([text, needle]) => { if (!text.includes(needle)) throw new Error('Missing in output: ' + needle); });

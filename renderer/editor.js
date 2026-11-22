@@ -58,11 +58,16 @@ const ICON = {
   section: P('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/>'),
   header: P('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6 6.5h4"/>'),
   footer: P('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 15h18"/><path d="M6 17.5h4"/>'),
+  jump: P('<path d="M8 9l4-4 4 4M8 15l4 4 4-4"/><path d="M12 5v14"/>'),
   page: P('<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>'),
   home: P('<path d="m3 11 9-7 9 7"/><path d="M5 10v10h14V10"/>'),
   grip: P('<g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></g>'),
   up: P('<path d="m6 14 6-6 6 6"/>'),
   down: P('<path d="m6 10 6 6 6-6"/>'),
+  prev: P('<path d="m14 6-6 6 6 6"/>'),
+  next: P('<path d="m10 6 6 6-6 6"/>'),
+  moveto: P('<path d="M4 12h12M12 7l5 5-5 5"/><path d="M20 4v16"/>'),
+  paste: P('<rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9 5V3h6v2"/>'),
   copy: P('<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>'),
   trash: P('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
   plus: P('<path d="M12 5v14M5 12h14"/>'),
@@ -119,7 +124,7 @@ let history = [], hIndex = -1, lastKey = null, lastTime = 0;
 let drag = null, dropTarget = null;
 let previewPage = null;
 let codeFile = 'index.html';
-let appVersion = '2.2.0';
+let appVersion = '2.4.0';
 const LOGO_SRC = (document.querySelector('.brand-logo') || {}).src || 'logo.png';
 
 const uid = () => Math.random().toString(36).slice(2, 7) + Date.now().toString(36).slice(-3);
@@ -261,6 +266,7 @@ function normalizeSite(s) {
   s.settings = Object.assign({}, base.settings, s.settings || {});
   if (!Array.isArray(s.header.menuLinks)) s.header.menuLinks = [];
   s.custom = Object.assign({ css: '', js: '' }, s.custom || {});
+  s.jump = Object.assign({ top: false, bottom: false, look: 'icon', side: 'right', bg: 'primary', color: '', topText: 'Back to top', bottomText: 'Go to bottom' }, s.jump || {});
   if (!Array.isArray(s.pages) || !s.pages.length) s.pages = base.pages;
   s.pages.forEach(p => {
     p.sections = p.sections || [];
@@ -403,6 +409,7 @@ function onCanvasLoad() {
   d.addEventListener('input', onCanvasInput);
   d.addEventListener('keydown', onCanvasKey);
   d.addEventListener('paste', onCanvasPaste);
+  ['copy', 'cut', 'paste'].forEach(t => d.addEventListener(t, onClipEvent));
   d.addEventListener('focusout', onCanvasFocusOut);
   d.addEventListener('pointerdown', onCanvasPointerDown);
   d.addEventListener('pointermove', onCanvasPointerMove);
@@ -490,8 +497,10 @@ function buildToolbar(n, ui) {
         tbtn('bold', 'Bold', () => fmt('bold'), true), tbtn('italic', 'Italic', () => fmt('italic'), true), tbtn('underline', 'Underline', () => fmt('underline'), true),
         tbtn('link', 'Link', () => openLinkPopover(tb), true), tbtn('ul', 'Bulleted list', () => fmt('insertUnorderedList'), true), tbtn('ol', 'Numbered list', () => fmt('insertOrderedList'), true)] : null,
       H('span', { class: 'wv-sep' }),
-      tbtn('up', 'Move up', () => moveElement(sel.id, -1)),
-      tbtn('down', 'Move down', () => moveElement(sel.id, 1)),
+      tbtn('up', 'Move up (Alt+↑)', () => moveElement(sel.id, -1)),
+      tbtn('down', 'Move down (Alt+↓)', () => moveElement(sel.id, 1)),
+      f.section.columns.length > 1 ? [tbtn('prev', 'Move to the column on the left (Alt+←)', () => moveElementSide(sel.id, -1)), tbtn('next', 'Move to the column on the right (Alt+→)', () => moveElementSide(sel.id, 1))] : null,
+      tbtn('moveto', 'Move to another section or page… (Ctrl+Shift+M)', () => moveToDialog(sel.id)),
       tbtn('copy', 'Duplicate', duplicateSel),
       tbtn('trash', 'Delete', deleteSel));
   } else if (sel.kind === 'section') {
@@ -503,7 +512,7 @@ function buildToolbar(n, ui) {
       tbtn('copy', 'Duplicate section', duplicateSel),
       tbtn('trash', 'Delete section', deleteSel));
   } else {
-    tb = H('div', { class: 'wv-tb is-section' }, H('span', { class: 'wv-grip', html: ICON[sel.kind] + '<span>' + (sel.kind === 'header' ? 'Header (every page)' : 'Footer (every page)') + '</span>' }));
+    tb = H('div', { class: 'wv-tb is-section' }, H('span', { class: 'wv-grip', html: ICON[sel.kind] + '<span>' + (sel.kind === 'jump' ? 'Page buttons (every page)' : sel.kind === 'header' ? 'Header (every page)' : 'Footer (every page)') + '</span>' }));
   }
   ui.appendChild(tb);
   const win = d.defaultView, r = n.getBoundingClientRect();
@@ -511,6 +520,7 @@ function buildToolbar(n, ui) {
   const th = tb.offsetHeight, tw = tb.offsetWidth;
   let top, left = r.left + sx;
   if (sel.kind === 'el') { top = r.top + sy - th - 7; if (top < sy + 2) top = r.bottom + sy + 7; }
+  else if (sel.kind === 'jump') { top = r.top + sy - th - 7; left = r.right + sx - tw; }
   else { top = r.top + sy + 8; left = r.left + sx + 8; }
   left = Math.max(sx + 4, Math.min(left, sx + vw - tw - 6));
   tb.style.top = top + 'px';
@@ -525,15 +535,15 @@ function addResizeHandles(n, ui, H) {
   if (!f) return;
   const d = cdoc(), win = d.defaultView, r = n.getBoundingClientRect();
   const sx = win.scrollX, sy = win.scrollY;
-  if ((STYLE_SUPPORT[f.el.type] || []).includes('width')) {
+  if (styleSupport(f.el).includes('width')) {
     const right = (f.el.style.align || 'left') !== 'right';
     const hd = H('span', { class: 'wv-rs', title: 'Drag to change the width', 'data-resize': 'width' });
     hd.style.left = ((right ? r.right : r.left) + sx) + 'px';
     hd.style.top = (r.top + sy + Math.min(r.height / 2, 120)) + 'px';
     ui.appendChild(hd);
   }
-  if (f.el.type === 'spacer') {
-    const hd = H('span', { class: 'wv-rs v', title: 'Drag to change the height', 'data-resize': 'height' });
+  if (f.el.type === 'spacer' || (f.el.type === 'divider' && f.el.props.direction === 'vertical' && (!f.el.props.fill || f.el.props.variant === 'short'))) {
+    const hd = H('span', { class: 'wv-rs v', title: f.el.type === 'spacer' ? 'Drag to change the height' : 'Drag to change the length', 'data-resize': 'height' });
     hd.style.left = (r.left + sx + r.width / 2) + 'px';
     hd.style.top = (r.bottom + sy) + 'px';
     ui.appendChild(hd);
@@ -605,10 +615,10 @@ function onCanvasPointerMove(e) {
 }
 function autoScroll() {
   if (!pdrag || !pdrag.active) return;
-  const win = cdoc().defaultView, y = pdrag.lastY, vh = win.innerHeight, edge = 50;
+  const win = cdoc().defaultView, y = pdrag.lastY, vh = win.innerHeight, edge = 70;
   let dy = 0;
-  if (y < edge) dy = -Math.ceil((edge - y) / 3);
-  else if (y > vh - edge) dy = Math.ceil((y - (vh - edge)) / 3);
+  if (y < edge) dy = -Math.ceil((edge - y) / 2.5);
+  else if (y > vh - edge) dy = Math.ceil((y - (vh - edge)) / 2.5);
   if (!dy) return;
   win.scrollBy(0, dy);
   dropTarget = computeTarget(pdrag.payload, pdrag.lastX, y);
@@ -625,9 +635,11 @@ function doResize() {
     floatLabel('Width ' + pct + '%', x, y);
     if (String(pct) !== String(el.style.width || '100')) { el.style.width = String(pct); changed({ key: 'el:' + el.id + ':width' }); }
   } else {
-    const hpx = Math.max(4, Math.min(600, Math.round((pdrag.startH + y - pdrag.startY) / 8) * 8));
-    floatLabel('Height ' + hpx + ' px', x, y);
-    if (hpx !== +el.props.height) { el.props.height = hpx; changed({ key: 'el:' + el.id + ':height' }); }
+    const line = el.type === 'divider';
+    const hpx = Math.max(line ? 16 : 4, Math.min(line ? 800 : 600, Math.round((pdrag.startH + y - pdrag.startY) / 8) * 8));
+    const k = line ? 'length' : 'height';
+    floatLabel((line ? 'Length ' : 'Height ') + hpx + ' px', x, y);
+    if (hpx !== +el.props[k]) { el.props[k] = hpx; changed({ key: 'el:' + el.id + ':' + k }); }
   }
 }
 async function onCanvasPointerUp() {
@@ -776,6 +788,7 @@ function onCanvasKey(e) {
   }
   if (t && t.closest && t.closest('#wv-ui')) return;
   if (!editing && (e.key === 'Delete' || e.key === 'Backspace') && sel && (sel.kind === 'el' || sel.kind === 'section')) { e.preventDefault(); deleteSel(); return; }
+  if (!editing && moveKeys(e)) return;
   handleShortcut(e, editing);
 }
 function fmt(cmd) {
@@ -1076,6 +1089,166 @@ function moveElement(id, dir) {
   changed();
   scrollToSel();
 }
+/* ---------- moving items to other columns, sections and pages ---------- */
+
+function columnNames(n) {
+  return n === 1 ? ['Column'] : n === 2 ? ['Left', 'Right'] : n === 3 ? ['Left', 'Middle', 'Right'] : ['1st', '2nd', '3rd', '4th'].slice(0, n);
+}
+function sectionName(sec) {
+  if (sec.label) return sec.label;
+  if (sec.anchor) return sec.anchor;
+  for (const c of sec.columns) for (const e of c.elements) {
+    if (e.type === 'heading' && e.props.text) return e.props.text.length > 42 ? e.props.text.slice(0, 40) + '…' : e.props.text;
+  }
+  const first = sec.columns.map(c => c.elements[0]).find(Boolean);
+  return first ? (T.LABELS[first.type] || first.type) : 'Empty section';
+}
+// Move an element to a column anywhere on the website. where: 'top' | 'bottom' | index
+function moveElementTo(id, page, section, colIndex, where) {
+  const f = findElement(id);
+  if (!f) return;
+  const tcol = section.columns[colIndex];
+  if (!tcol) return;
+  f.col.elements.splice(f.index, 1);
+  const at = where === 'top' ? 0 : where === 'bottom' || where == null ? tcol.elements.length : Math.max(0, Math.min(where, tcol.elements.length));
+  tcol.elements.splice(at, 0, f.el);
+  sel = { kind: 'el', id };
+  if (page.id !== pageId) {
+    pageId = page.id;
+    renderPagesTab();
+  }
+  changed({ panel: true });
+  scrollToSel();
+}
+function moveElementSide(id, dir) {
+  const f = findElement(id);
+  if (!f) return;
+  const ci = f.colIndex + dir;
+  if (ci < 0 || ci >= f.section.columns.length) {
+    toast(f.section.columns.length < 2 ? 'This section has one column. Use Move to… to put it somewhere else.' : 'This is already the ' + (dir < 0 ? 'left' : 'right') + '-most column.');
+    return;
+  }
+  moveElementTo(id, f.page, f.section, ci, f.index);
+}
+let moveWhere = 'bottom';
+function moveToDialog(id) {
+  const f = findElement(id || (sel && sel.id));
+  if (!f) { toast('Select an item on the page first.'); return; }
+  const label = (T.LABELS[f.el.type] || 'item').toLowerCase();
+  const list = h('div', { class: 'moveto-list' });
+  let m;
+  const go = (page, section, ci) => {
+    m.close();
+    moveElementTo(f.el.id, page, section, ci, moveWhere);
+    toast('Moved to ' + (page.id !== f.page.id ? '“' + page.name + '”, ' : '') + '“' + sectionName(section) + '”');
+  };
+  const pages = [f.page, ...site.pages.filter(p => p !== f.page)];
+  pages.forEach(page => {
+    list.appendChild(h('h3', { class: 'moveto-page' }, icon('pages'), page.name, page === f.page ? h('span', { class: 'hint' }, ' · this page') : null));
+    if (!page.sections.length) list.appendChild(h('p', { class: 'hint' }, 'No sections yet.'));
+    page.sections.forEach((sec, si) => {
+      const names = columnNames(sec.columns.length);
+      list.appendChild(h('div', { class: 'moveto-row' },
+        h('div', { class: 'moveto-sec' }, h('b', null, 'Section ' + (si + 1)), h('span', null, sectionName(sec))),
+        h('div', { class: 'moveto-cols' }, sec.columns.map((col, ci) => {
+          const here = sec === f.section && ci === f.colIndex;
+          return h('button', { type: 'button', class: 'btn sm' + (here ? ' is-here' : ''), disabled: here || null, title: here ? 'It’s already here' : 'Move the ' + label + ' to ' + (names.length > 1 ? 'the ' + names[ci].toLowerCase() + ' column of ' : '') + 'section ' + (si + 1) + ' on ' + page.name, onclick: () => go(page, sec, ci) },
+            names.length > 1 ? names[ci] + (here ? ' (here)' : '') : (here ? 'It’s here' : 'Move here'));
+        }))));
+    });
+    list.appendChild(h('div', { class: 'moveto-row' }, h('div', { class: 'moveto-sec' }, h('span', { class: 'hint' }, 'A new section at the end of ' + page.name)),
+      h('div', { class: 'moveto-cols' }, h('button', { type: 'button', class: 'btn sm', onclick: () => {
+        const ns = T.makeSectionObj(ctx, '1', [[]]);
+        page.sections.push(ns);
+        go(page, ns, 0);
+      } }, icon('plus'), 'New section'))));
+  });
+  m = modal({
+    title: 'Move the ' + label + ' to…',
+    wide: true,
+    body: h('div', null,
+      field('Put it', segCtl([{ v: 'top', label: 'At the top of the column' }, { v: 'bottom', label: 'At the bottom of the column' }], moveWhere, v => { moveWhere = v; })),
+      list,
+      h('p', { class: 'hint' }, 'You can also drag items straight onto another section, use the arrows on the item’s toolbar, or cut (Ctrl+X) and paste (Ctrl+V) them, even onto another page.')),
+    actions: [{ label: 'Cancel' }]
+  });
+}
+
+/* ---------- cut, copy and paste whole items ---------- */
+
+let itemClip = null; // { kind: 'el' | 'section', data }
+const CLIP_TYPE = 'application/x-pocket-web-item';
+function canClipItem() {
+  if (mode !== 'edit' || !sel || (sel.kind !== 'el' && sel.kind !== 'section')) return false;
+  if (editingNode()) return false;
+  const a = document.activeElement;
+  if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return false;
+  if ($('#modalRoot').children.length) return false;
+  const cs = cdoc() && cdoc().getSelection();
+  if (cs && !cs.isCollapsed && String(cs).trim()) return false;   // copying words on the page
+  const ms = window.getSelection();
+  if (ms && !ms.isCollapsed && String(ms).trim()) return false;
+  return true;
+}
+function copyItem(cut) {
+  if (!sel) return null;
+  const f = sel.kind === 'el' ? findElement(sel.id) : findSection(sel.id);
+  if (!f) return null;
+  itemClip = { kind: sel.kind, data: clone(sel.kind === 'el' ? f.el : f.section) };
+  if (cut) deleteSel(true);
+  else toast((sel.kind === 'el' ? (T.LABELS[f.el.type] || 'Item') : 'Section') + ' copied. Select where it should go and press Ctrl+V.');
+  return itemClip;
+}
+function pasteItem(clip) {
+  clip = clip || itemClip;
+  if (!clip) { toast('Copy or cut an item first.'); return; }
+  const page = site.pages.find(p => p.id === pageId);
+  const c = reId(clip.data);
+  if (clip.kind === 'section') {
+    const fs = sel && sel.kind === 'section' ? findSection(sel.id) : sel && sel.kind === 'el' ? findSection(findElement(sel.id).section.id) : null;
+    const at = fs && fs.page === page ? fs.index + 1 : page.sections.length;
+    page.sections.splice(at, 0, c);
+    sel = { kind: 'section', id: c.id };
+  } else {
+    if (sel && sel.kind === 'el' && findElement(sel.id)) {
+      const f = findElement(sel.id);
+      f.col.elements.splice(f.index + 1, 0, c);
+    } else if (sel && sel.kind === 'section' && findSection(sel.id)) {
+      findSection(sel.id).section.columns[0].elements.push(c);
+    } else {
+      if (!page.sections.length) page.sections.push(T.makeSectionObj(ctx, '1', [[]]));
+      page.sections[page.sections.length - 1].columns[0].elements.push(c);
+    }
+    sel = { kind: 'el', id: c.id };
+  }
+  changed({ panel: true });
+  toast('Pasted');
+  scrollToSel();
+}
+function onClipEvent(e) {
+  if (e.type === 'paste') {
+    if (mode !== 'edit' || isTyping(e) || editingNode()) return;
+    const a = document.activeElement;
+    if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
+    let clip = null;
+    try { const raw = e.clipboardData && e.clipboardData.getData(CLIP_TYPE); if (raw) clip = JSON.parse(raw); } catch (err) { /* ignore */ }
+    if (!clip && !itemClip) return;
+    e.preventDefault();
+    pasteItem(clip && clip.kind && clip.data ? clip : itemClip);
+    return;
+  }
+  if (!canClipItem()) return;
+  e.preventDefault();
+  const clip = copyItem(e.type === 'cut');
+  if (clip && e.clipboardData) {
+    try {
+      e.clipboardData.setData(CLIP_TYPE, JSON.stringify(clip));
+      e.clipboardData.setData('text/plain', clip.kind === 'el' ? (T.LABELS[clip.data.type] || 'Item') + ' from Pocket-Web-Studio' : 'Section from Pocket-Web-Studio');
+    } catch (err) { /* ignore */ }
+  }
+}
+['copy', 'cut', 'paste'].forEach(t => document.addEventListener(t, onClipEvent));
+
 function moveSection(id, dir) {
   const f = findSection(id);
   if (!f) return;
@@ -1103,7 +1276,7 @@ function duplicateSel() {
   toast('Duplicated');
   scrollToSel();
 }
-function deleteSel() {
+function deleteSel(cut) {
   if (!sel) return;
   if (sel.kind === 'el') {
     const f = findElement(sel.id); if (!f) return;
@@ -1115,7 +1288,7 @@ function deleteSel() {
     sel = null;
   } else return;
   changed({ panel: true });
-  toast('Deleted. Press Undo to bring it back.');
+  toast(cut === true ? 'Cut. Select where it should go and press Ctrl+V.' : 'Deleted. Press Undo to bring it back.');
 }
 
 /* ================================================================== */
@@ -1273,7 +1446,7 @@ function crumbs() {
       parts.push(h('span', { class: 'crumb-sep' }, '›'), h('span', { class: 'crumb cur' }, T.LABELS[f.el.type]));
     }
   } else if (sel && sel.kind === 'section') parts.push(h('span', { class: 'crumb-sep' }, '›'), h('span', { class: 'crumb cur' }, 'Section'));
-  else if (sel) parts.push(h('span', { class: 'crumb-sep' }, '›'), h('span', { class: 'crumb cur' }, sel.kind === 'header' ? 'Header' : 'Footer'));
+  else if (sel) parts.push(h('span', { class: 'crumb-sep' }, '›'), h('span', { class: 'crumb cur' }, sel.kind === 'jump' ? 'Page buttons' : sel.kind === 'header' ? 'Header' : 'Footer'));
   return h('nav', { class: 'crumbs', 'aria-label': 'Selection' }, parts);
 }
 
@@ -1294,6 +1467,7 @@ function renderPanel() {
   else if (sel.kind === 'section') { const f = findSection(sel.id); root.appendChild(f ? sectionPanel(f) : pagePanel()); }
   else if (sel.kind === 'header') root.appendChild(headerPanel());
   else if (sel.kind === 'footer') root.appendChild(footerPanel());
+  else if (sel.kind === 'jump') root.appendChild(jumpPanel());
   if (keepScroll) root.scrollTop = scroll;
 }
 
@@ -1340,6 +1514,7 @@ function sectionPanel(f) {
     panelHead('section', 'Section', count + ' element' + (count === 1 ? '' : 's') + ' · ' + (Gen.LAYOUTS[s.layout] || 1) + ' column' + ((Gen.LAYOUTS[s.layout] || 1) > 1 ? 's' : '')),
     group('Layout',
       field('Columns', layoutPicker(s.layout, v => set(() => setLayout(s, v), null, { panel: true })), 'On phones, columns stack on top of each other.'),
+      (Gen.LAYOUTS[s.layout] || 1) > 1 ? field('Lines between columns', segCtl([{ v: '', label: 'None' }, { v: 'line', label: 'Line' }, { v: 'dashed', label: 'Dashed' }, { v: 'dotted', label: 'Dotted' }], s.colLines || '', v => set(() => { s.colLines = v; })), 'Upright lines between the columns. On phones they become lines across, between the stacked columns.') : null,
       field('Line up contents', segCtl([{ v: 'top', label: 'Top' }, { v: 'center', label: 'Middle' }, { v: 'bottom', label: 'Bottom' }, { v: 'stretch', label: 'Fill' }], s.valign || 'top', v => set(() => { s.valign = v; }))),
       field('Width', segCtl([{ v: 'contained', label: 'Normal' }, { v: 'wide', label: 'Wide' }, { v: 'full', label: 'Edge to edge' }], s.width || 'contained', v => set(() => { s.width = v; }))),
       field('Space above and below', segCtl([{ v: 'none', label: 'None' }, { v: 'sm', label: 'S' }, { v: 'md', label: 'M' }, { v: 'lg', label: 'L' }, { v: 'xl', label: 'XL' }], s.padding || 'md', v => set(() => { s.padding = v; }))),
@@ -1356,10 +1531,11 @@ function sectionPanel(f) {
   );
 }
 
-function actionRow(up, down) {
+function actionRow(up, down, extra) {
   return group(null, h('div', { class: 'btn-row' },
     h('button', { type: 'button', class: 'btn sm', onclick: up }, icon('up'), 'Move up'),
     h('button', { type: 'button', class: 'btn sm', onclick: down }, icon('down'), 'Move down'),
+    extra || null,
     h('button', { type: 'button', class: 'btn sm', onclick: duplicateSel }, icon('copy'), 'Duplicate'),
     h('button', { type: 'button', class: 'btn sm danger', onclick: deleteSel }, icon('trash'), 'Delete')));
 }
@@ -1514,7 +1690,19 @@ const CONTENT = {
       field('Button text', inputCtl(p.submitText, v => setEl(el, () => { p.submitText = v; }, 'submit')))
     ];
   },
-  divider: el => [field('Style', segCtl([{ v: 'line', label: 'Line' }, { v: 'dashed', label: 'Dashed' }, { v: 'dotted', label: 'Dotted' }, { v: 'short', label: 'Short' }], el.props.variant || 'line', v => setEl(el, () => { el.props.variant = v; })))],
+  divider: el => {
+    const vert = el.props.direction === 'vertical';
+    return [
+      field('Direction', segCtl([{ v: 'horizontal', label: 'Across' }, { v: 'vertical', label: 'Up and down' }], vert ? 'vertical' : 'horizontal', v => setEl(el, () => {
+        el.props.direction = v;
+        if (v === 'vertical' && !el.style.align) el.style.align = 'center';
+      }, null, { panel: true })), vert ? 'In a section with more than one column, it turns into a line across on phones, where the columns stack.' : null),
+      field('Style', segCtl([{ v: 'line', label: 'Line' }, { v: 'dashed', label: 'Dashed' }, { v: 'dotted', label: 'Dotted' }, { v: 'short', label: 'Short' }], el.props.variant || 'line', v => setEl(el, () => { el.props.variant = v; }, null, { panel: true }))),
+      vert && el.props.variant !== 'short' ? field('Height', segCtl([{ v: false, label: 'Set height' }, { v: true, label: 'Fill the column' }], !!el.props.fill, v => setEl(el, () => { el.props.fill = v; }, null, { panel: true })), el.props.fill ? 'The line runs the full height of its row, next to whatever is in the other columns.' : null) : null,
+      vert && (!el.props.fill || el.props.variant === 'short') ? field('Length', rangeCtl(16, 800, 8, +el.props.length || (el.props.variant === 'short' ? 48 : 128), v => setEl(el, () => { el.props.length = v; }, 'length'), v => v + ' px'), 'Or drag the handle at the bottom of the line on the page.') : null,
+      vert ? h('div', { class: 'tip' }, icon('section'), h('p', null, 'Want a line between columns? Select the section and choose “Lines between columns”.')) : null
+    ];
+  },
   spacer: el => [
     field('Height', segCtl([{ v: 'sm', label: 'S' }, { v: 'md', label: 'M' }, { v: 'lg', label: 'L' }, { v: 'xl', label: 'XL' }], el.props.height ? null : (el.props.size || 'md'), v => setEl(el, () => { el.props.size = v; el.props.height = 0; }, null, { panel: true }))),
     field('Exact height', rangeCtl(4, 600, 4, +el.props.height || ({ sm: 16, md: 40, lg: 80, xl: 128 }[el.props.size || 'md']), v => setEl(el, () => { el.props.height = v; }, 'height'), v => v + ' px'), 'Or drag the handle at the bottom of the space on the page.')
@@ -1525,6 +1713,11 @@ const CONTENT = {
   ]
 };
 
+// Look options an element offers (an upright line has no width).
+function styleSupport(el) {
+  const sup = STYLE_SUPPORT[el.type] || [];
+  return el.type === 'divider' && el.props.direction === 'vertical' ? sup.filter(k => k !== 'width') : sup;
+}
 function widthCtl(el) {
   const st = el.style;
   const cur = Math.max(10, Math.min(100, Math.round(+st.width || 100)));
@@ -1536,7 +1729,7 @@ const FOCUS_OPTS = [{ v: 'top', label: 'Top' }, { v: 'center', label: 'Middle' }
 const focusField = el => field('Keep in view', segCtl(FOCUS_OPTS, el.props.focus || 'center', v => setEl(el, () => { el.props.focus = v; })), 'Which part of each picture to keep when it’s cropped to fit. Choose Top for people’s faces.');
 const SHAPE_OPTS = [{ v: '', label: 'Original' }, { v: 'square', label: 'Square' }, { v: 'landscape', label: 'Landscape' }, { v: 'portrait', label: 'Portrait' }, { v: 'wide', label: 'Wide' }, { v: 'circle', label: 'Circle' }];
 function stylePanel(el) {
-  const sup = STYLE_SUPPORT[el.type] || [];
+  const sup = styleSupport(el);
   const st = el.style;
   const s = (fn, key) => setEl(el, fn, key);
   const out = [];
@@ -1563,7 +1756,11 @@ function elementPanel(f) {
       field('Appear effect', selectCtl([['', 'None'], ['fade', 'Fade in'], ['up', 'Rise up'], ['left', 'Slide in from the left'], ['right', 'Slide in from the right'], ['zoom', 'Zoom in']], el.style.anim || '', v => setEl(el, () => { el.style.anim = v; }, null, { render: false })), 'Plays once when the visitor scrolls to it. See it in Preview.'),
       field('Keep moving', selectCtl([['', 'No'], ['float', 'Float up and down'], ['pulse', 'Pulse'], ['sway', 'Sway'], ['spin', 'Spin slowly']], el.style.motion || '', v => setEl(el, () => { el.style.motion = v; })), 'Visitors who turn off animations on their device won’t see movement.')) : null,
     group('Visibility', toggleCtl('Hide on phones', el.style.hideMobile, v => setEl(el, () => { el.style.hideMobile = v; }, null, { render: false })), field(null, null)),
-    actionRow(() => moveElement(el.id, -1), () => moveElement(el.id, 1))
+    actionRow(() => moveElement(el.id, -1), () => moveElement(el.id, 1), [
+      findElement(el.id) && findElement(el.id).section.columns.length > 1 ? [
+        h('button', { type: 'button', class: 'btn sm', onclick: () => moveElementSide(el.id, -1) }, icon('prev'), 'Column left'),
+        h('button', { type: 'button', class: 'btn sm', onclick: () => moveElementSide(el.id, 1) }, icon('next'), 'Column right')] : null,
+      h('button', { type: 'button', class: 'btn sm', onclick: () => moveToDialog(el.id) }, icon('moveto'), 'Move to…')])
   );
 }
 
@@ -1598,6 +1795,28 @@ function menuLinksEditor() {
       field('Goes to', linkCtl(m.link, m.newTab, (l, t) => s(() => { m.link = l; m.newTab = t; }, m.id + 'k'))),
       field('Show', selectCtl([['', 'At the top level'], ...tops.map(p => [p.id, 'Under “' + p.name + '”'])], m.parent || '', v => s(() => { m.parent = v; }))))),
     h('button', { type: 'button', class: 'btn sm', onclick: () => s(() => { list.push({ id: uid(), label: 'New link', link: '', newTab: false, parent: '' }); }, null, { panel: true }) }, icon('plus'), 'Add a menu link'));
+}
+// "Back to top" and "Go to bottom" buttons
+function jumpControls() {
+  const j = site.jump;
+  const s = (fn, key, o) => { fn(); changed(Object.assign({ key: key ? 'jump:' + key : null }, o || {})); };
+  const on = j.top || j.bottom;
+  return [
+    toggleCtl('“Back to top” button', !!j.top, v => s(() => { j.top = v; }, null, { panel: true, design: true })),
+    toggleCtl('“Go to bottom” button', !!j.bottom, v => s(() => { j.bottom = v; }, null, { panel: true, design: true })),
+    on ? field('Look', segCtl([{ v: 'icon', label: 'Arrow only' }, { v: 'text', label: 'Arrow and words' }], j.look || 'icon', v => s(() => { j.look = v; }))) : null,
+    on ? field('Corner', segCtl([{ v: 'left', label: 'Bottom left' }, { v: 'right', label: 'Bottom right' }], j.side || 'right', v => s(() => { j.side = v; }))) : null,
+    on && j.top ? field('“Back to top” words', inputCtl(j.topText, v => s(() => { j.topText = v; }, 'top')), j.look === 'text' ? null : 'Shown when people point at the button, and read out by screen readers.') : null,
+    on && j.bottom ? field('“Go to bottom” words', inputCtl(j.bottomText, v => s(() => { j.bottomText = v; }, 'bottom'))) : null,
+    on ? field('Button colour', colorCtl(j.bg || 'primary', v => s(() => { j.bg = v || 'primary'; }))) : null,
+    on ? field('Arrow and words colour', colorCtl(j.color, v => s(() => { j.color = v; }), { noneLabel: 'Automatic' })) : null,
+    on ? h('p', { class: 'hint' }, 'The buttons stay in the corner of the screen on every page. “Back to top” appears once visitors scroll down, and “Go to bottom” hides when they reach the end. See them working in Preview.') : null
+  ];
+}
+function jumpPanel() {
+  return h('div', null,
+    panelHead('jump', 'Page buttons', 'Shown on every page'),
+    group('Back to top and Go to bottom', ...jumpControls()));
 }
 function footerPanel() {
   const ft = site.footer;
@@ -1793,6 +2012,7 @@ function renderDesignTab() {
       field('Body text', selectCtl(fontOpts, th.fonts.body, v => set(() => { th.fonts.body = v; })))),
     h('section', { class: 'lgroup' }, h('h3', null, 'Corners'),
       segCtl([{ v: 'square', label: 'Square' }, { v: 'soft', label: 'Soft' }, { v: 'round', label: 'Round' }], th.radius || 'soft', v => set(() => { th.radius = v; }))),
+    h('section', { class: 'lgroup' }, h('h3', null, 'Back to top and Go to bottom'), ...jumpControls()),
     h('section', { class: 'lgroup' }, h('h3', null, 'Website'),
       field('Website name', inputCtl(site.name, v => { site.name = v; changed({ key: 'site:name', render: false }); }), 'Used in browser tabs and search results.'),
       field('Language', selectCtl([['en-GB', 'English (UK)'], ['en-US', 'English (US)'], ['en', 'English'], ['cy', 'Welsh'], ['ga', 'Irish'], ['fr', 'French'], ['de', 'German'], ['es', 'Spanish'], ['it', 'Italian'], ['nl', 'Dutch'], ['pt', 'Portuguese'], ['pl', 'Polish'], ['sv', 'Swedish']], site.settings.language || 'en', v => { site.settings.language = v; changed({ render: false }); syncSpellLanguage(); }), 'Helps screen readers pronounce your words correctly, and sets the spelling dictionary.'),
@@ -2599,6 +2819,22 @@ function isTyping(e) {
   const t = e && e.target;
   return !!(t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)));
 }
+// Alt+arrow keys move the selected item; Ctrl+Shift+M opens Move to…
+function moveKeys(e) {
+  if (!sel || mode !== 'edit') return false;
+  if (e.altKey && !e.ctrlKey && !e.metaKey && /^Arrow/.test(e.key)) {
+    if (sel.kind === 'el') {
+      e.preventDefault();
+      if (e.key === 'ArrowUp') moveElement(sel.id, -1);
+      else if (e.key === 'ArrowDown') moveElement(sel.id, 1);
+      else moveElementSide(sel.id, e.key === 'ArrowLeft' ? -1 : 1);
+      return true;
+    }
+    if (sel.kind === 'section' && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); moveSection(sel.id, e.key === 'ArrowUp' ? -1 : 1); return true; }
+  }
+  if (!DESKTOP && (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'm' && sel.kind === 'el') { e.preventDefault(); moveToDialog(sel.id); return true; }
+  return false;
+}
 function handleShortcut(e, typing) {
   if (DESKTOP) return;
   const mod = e.ctrlKey || e.metaKey;
@@ -2614,6 +2850,7 @@ document.addEventListener('keydown', e => {
   if (!typing && $('#modalRoot').children.length === 0 && mode === 'edit') {
     if ((e.key === 'Delete' || e.key === 'Backspace') && sel && (sel.kind === 'el' || sel.kind === 'section')) { e.preventDefault(); deleteSel(); return; }
     if (e.key === 'Escape' && sel) { select(null); return; }
+    if (moveKeys(e)) return;
   }
   handleShortcut(e, typing);
 });
@@ -2635,6 +2872,7 @@ const COMMANDS = {
   'undo': () => { const d = activeTypingTarget(); if (d) d.execCommand('undo'); else undoRedo(-1); },
   'redo': () => { const d = activeTypingTarget(); if (d) d.execCommand('redo'); else undoRedo(1); },
   'duplicate': () => { if (!activeTypingTarget()) duplicateSel(); },
+  'move-to': () => { if (sel && sel.kind === 'el') moveToDialog(sel.id); else toast('Select an item on the page first.'); },
   'view-edit': () => setMode('edit'),
   'view-preview': () => setMode('preview'),
   'view-code': () => setMode('code'),
@@ -2715,7 +2953,7 @@ function wireTopbar() {
 
 window.__weaver = {
   get site() { return site; }, get sel() { return sel; }, assets, importWebsite, importFiles: async list => { const r = await window.EzyImporter.importSite(list, { Gen, T, ctx, sanitizeRich, importImageBytes: (n, m, b) => importImageFile(new File([b], n, { type: m })), importVideoBytes: (n, m, b) => importVideoFile(new File([b], n, { type: m })), importRawBytes }); loadSite(r.site, Object.fromEntries(Object.keys(assets).map(n => [n, assets[n]])), null, r.site.name); return r.report; },
-  addElement, addSectionTemplate, select, switchPage, applyDrop, newSite, setMode, setDevice, setLeftTab, undoRedo, exportFiles, renderCanvas, findElement, computeTarget, sanitizeRich, publish
+  addElement, addSectionTemplate, select, switchPage, applyDrop, newSite, setMode, setDevice, setLeftTab, undoRedo, exportFiles, renderCanvas, findElement, computeTarget, moveToDialog, moveElementSide, get pageId() { return pageId; }, sanitizeRich, publish
 };
 
 async function boot() {

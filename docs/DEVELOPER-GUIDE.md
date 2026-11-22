@@ -147,6 +147,8 @@ site = {
   header: { show, logoText, logoImage, layout, sticky, bg, color,
             menuLinks: [{ id, label, link, newTab, parent }] },
   footer: { show, text /* "{year}" is replaced */, showNav, bg, color },
+  jump: { top, bottom, look /* 'icon' | 'text' */, side /* 'left' | 'right' */,
+          bg, color, topText, bottomText },      // Back to top / Go to bottom buttons
   pages: [{
     id, name, title, description, showInNav,
     parent,                                     // optional: id of a top-level page (drop-downs, one level)
@@ -162,7 +164,8 @@ section = {
   id, layout,       // '1' | '1-1' | '1-2' | '2-1' | '1-1-1' | '1-1-1-1'
   columns: [{ id, elements: [element, …] }],
   padding, width, valign, height,
-  bg, bgImage, overlay, parallax, textColor, anchor
+  bg, bgImage, overlay, parallax, textColor, anchor,
+  colLines          // '' | 'line' | 'dashed' | 'dotted': lines between columns
 }
 
 element = {
@@ -174,6 +177,8 @@ element = {
 ```
 
 **Element types:** `heading`, `text`, `button`, `link`, `image`, `divider`, `spacer`, `gallery`, `slideshow`, `video`, `map`, `ticker`, `card`, `quote`, `table`, `faq`, `form`, `html`.
+
+**Line props:** `divider` has `variant` (`line` | `dashed` | `dotted` | `short`), `direction` (`horizontal` | `vertical`), and for upright lines `fill` (run the full height of the column) or `length` (16–800 px, output as `--len`). Upright lines in a multi-column section turn horizontal at phone width.
 
 **Picture fitting props:** `focus` (`top` | `center` | `bottom`) on `image`, `card`, `gallery` and `slideshow` sets which part of a cropped picture stays in view (`--focus` → `object-position`). Galleries use `columns` (1–6, the most per row), `ratio` (`square` | `landscape` | `portrait` | `original`, where `original` gives a masonry layout) and `gap`. Slideshows use `ratio` (`landscape` | `wide` | `panorama`) and `fit` (`fill` | `whole`).
 
@@ -205,6 +210,7 @@ Main exports:
 | `customCss(site, o)`, `customJs(site)` | The user's own CSS (with `ezy-asset:` pictures resolved) and JavaScript |
 | `pageFiles(site)` | `{ pageId: 'index.html' | 'about.html' | … }` |
 | `navTree(site)` | The header menu: top-level items with drop-down children |
+| `hasJump(site)` | Whether the Back to top / Go to bottom buttons are on. `renderJump()` writes them after the footer, with `JUMP_CSS` and `JS_JUMP` added only when they are |
 | `siteUrl(site)`, `cleanDomain(d)` | The website's https address, for sitemaps and canonical links |
 | `PALETTES`, `FONT_PAIRS` | Built-in colour schemes and font pairings |
 
@@ -239,7 +245,7 @@ How it's put together:
 
 | Area | What to look for |
 | --- | --- |
-| State | `site`, `assets`, `pageId`, `sel` (`{kind:'el'|'section'|'header'|'footer'|'page', id}`), history |
+| State | `site`, `assets`, `pageId`, `sel` (`{kind:'el'|'section'|'header'|'footer'|'jump'|'page', id}`), history |
 | Changes | `changed(o)`, `setEl(el, fn, key, o)`, `undoRedo()`, `normalizeSite()` |
 | Canvas | `initCanvas`, `onCanvasLoad`, `renderCanvas`, `applySelection`, `buildToolbar`, `onCanvasClick`, `onCanvasKey`, `commitField`, `sanitizeRich` |
 | Drag and drop | `computeTarget`, `showDropLine`, `applyDrop`; HTML5 drag from the palette and grip; pointer drag of existing items (`onCanvasPointerDown/Move/Up`) |
@@ -249,8 +255,11 @@ How it's put together:
 | Per-type content | `CONTENT[type](el)` returns that element's panel controls |
 | Look options | `STYLE_SUPPORT[type]` lists which style controls the element offers |
 | Left tabs | `renderAddTab`, `renderPagesTab`, `renderDesignTab` |
+| Page buttons | `jumpControls` (used in the Design tab and in `jumpPanel`, shown when the buttons are clicked on the canvas) |
 | Features | `checkSpelling`, `domainWizard`, `domainChecker`, `importWebsite`, `publish`, `templateChooser` |
 | Commands | `COMMANDS` maps menu and shortcut names to functions |
+| Moving items | `moveElement` (up/down, carrying on into the next section), `moveElementSide` (next column), `moveElementTo` (any column on any page), `moveToDialog`, `moveKeys` (Alt+arrows) |
+| Cut, copy, paste | `onClipEvent` listens for the real `copy`/`cut`/`paste` events in both documents, so the Edit menu, the keyboard and the browser all work. `canClipItem` leaves word copying alone while typing. Items travel as JSON (`application/x-pocket-web-item`) with an in-memory fallback, and get fresh ids from `reId` when pasted. |
 | Code view | `renderCodeView`, `onCodeInput`, `applyCode`, `applyAllCode`, `confirmCodeDrafts`; unapplied text lives in `codeDraft` |
 | Browser drafts | `saveDraftNow`, `scheduleDraft` (browser version only, in `localStorage`) |
 
@@ -275,7 +284,7 @@ The canvas is a same-origin `srcdoc` iframe. `#wv-root` holds the page HTML from
 | `data-wv="<elementId>"` | an element |
 | `data-wv-section="<sectionId>"` | a section |
 | `data-wv-col="<sectionId>:<index>"` | a column |
-| `data-wv-part="header|footer"` | header or footer |
+| `data-wv-part="header|footer|jump"` | header, footer or the page buttons |
 | `data-wv-field="<prop>"` | an editable text field (`contenteditable`) |
 
 Text fields are `plaintext-only`, except the text element, which is rich and is cleaned by `sanitizeRich()` on commit.
@@ -348,7 +357,7 @@ A `.pocketweb` file is JSON:
 {
   "format": "pocket-project",
   "version": 2,
-  "app": "Pocket-Web-Studio 2.2.0",
+  "app": "Pocket-Web-Studio 2.4.0",
   "saved": "2026-11-14T12:00:00.000Z",
   "site": { … },
   "assets": { "photo-1.webp": { "mime": "image/webp", "w": 1600, "h": 1067, "data": "<base64>" } }
@@ -427,6 +436,9 @@ Before a release, check in the running app:
 
 - [ ] Each starter opens. Edit text, change pictures, undo and redo.
 - [ ] Drag from the Add tab, drag existing elements and sections, resize with the handles.
+- [ ] Move an item with the toolbar arrows, Alt+arrows and Move to… (including to another page); cut, copy and paste an item and a section between pages.
+- [ ] Back to top / Go to bottom: turn on in the Design tab; in Preview they appear and hide while scrolling and reach the top and the end.
+- [ ] Lines: an upright Line (set length and fill), and Lines between columns, at desktop and phone width.
 - [ ] Pages: add, reorder, put one in a drop-down, delete the parent.
 - [ ] Preview at all three sizes; the drop-down menu works with mouse and keyboard.
 - [ ] Spelling: underlines, right-click suggestions, F7 check.
@@ -459,10 +471,10 @@ Electron can be scripted for UI tests. Load `main.js` from a small test script, 
 
 To release a new version:
 
-1. Change `"version"` in `package.json` (for example to `2.3.0`) and run `npm install` so `package-lock.json` matches. Also change `let appVersion` near the top of `renderer/editor.js`, which the browser version shows in Help › About.
-2. In GitHub Desktop, commit ("Version 2.3.0") and click **Push origin**.
+1. Change `"version"` in `package.json` (for example to `2.5.0`) and run `npm install` so `package-lock.json` matches. Also change `let appVersion` near the top of `renderer/editor.js`, which the browser version shows in Help › About.
+2. In GitHub Desktop, commit ("Version 2.5.0") and click **Push origin**.
 3. On GitHub.com, open the repository, then **Releases › Draft a new release**.
-4. Under **Choose a tag**, type `v2.3.0` and choose **Create new tag on publish**. Give it a title and notes, then click **Publish release**.
+4. Under **Choose a tag**, type `v2.5.0` and choose **Create new tag on publish**. Give it a title and notes, then click **Publish release**.
 5. Creating the tag starts the workflow. After about 10–15 minutes, the installers appear on that release.
 
 Or open the **Actions** tab, choose **Build**, then **Run workflow**. The release is named from the version in `package.json`. Running it again for the same version adds the new files to that release.

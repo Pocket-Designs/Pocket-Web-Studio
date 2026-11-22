@@ -6,7 +6,7 @@
 
 Pocket-Web-Studio lets you build a website by dragging things onto a page and typing on it. You never need to write code: it writes the HTML, CSS and JavaScript for you, and the result works on computers, tablets and phones.
 
-This guide is for version 2.2.
+This guide is for version 2.4.
 
 ---
 
@@ -23,7 +23,7 @@ This guide is for version 2.2.
 9. [Pictures and video](#9-pictures-and-video)
 10. [Links](#10-links)
 11. [Pages and the menu](#11-pages-and-the-menu)
-12. [Colours, fonts and the header and footer](#12-colours-fonts-and-the-header-and-footer)
+12. [Colours, fonts, the header and footer, and page buttons](#12-colours-fonts-the-header-and-footer-and-page-buttons)
 13. [Movement and effects](#13-movement-and-effects)
 14. [Contact forms](#14-contact-forms)
 15. [Checking your spelling](#15-checking-your-spelling)
@@ -44,7 +44,7 @@ Download the installer for your computer from the project's **Releases** page on
 
 | Computer | File to download |
 | --- | --- |
-| Windows | `Pocket-Web-Studio Setup 2.2.0.exe` |
+| Windows | `Pocket-Web-Studio Setup 2.4.0.exe` |
 | Linux | the `.AppImage` (runs on most Linux systems) or the `.deb` (Ubuntu, Debian, Mint) |
 | Mac | the `.dmg` |
 
@@ -128,14 +128,33 @@ In a **text box**, select some words to get the formatting toolbar: **bold**, *i
 - The page scrolls by itself when you drag near the top or bottom.
 - Press **Esc** while dragging to cancel.
 - Inside a text box that's already selected, dragging selects words instead of moving the box. Click outside it first if you want to move it.
-- The **up and down arrows** on the small toolbar also move an item.
+- The **up and down arrows** on the small toolbar move an item one place. At the top or bottom of a column, they carry on into the section above or below.
+- In a section with more than one column, the **left and right arrows** move the item into the next column.
+- **Alt+↑, Alt+↓, Alt+← and Alt+→** do the same from the keyboard. Alt+↑ and Alt+↓ also move a selected section.
+
+### Moving to another section or page
+
+Click **Move to…** on the item's toolbar (the arrow pointing at a line), or in the right panel, or press **Ctrl+Shift+M**. A list shows every section on every page, with a button for each column:
+
+1. Choose **At the top of the column** or **At the bottom of the column**.
+2. Click the column you want. For a section with one column, click **Move here**.
+3. To start a new section for it, click **New section** at the end of any page.
+
+If you move it to another page, Pocket-Web-Studio opens that page so you can see it. Press Ctrl+Z to undo.
+
+### Cut, copy and paste
+
+- Select an item or a whole section and press **Ctrl+X** to cut it or **Ctrl+C** to copy it.
+- Select where it should go and press **Ctrl+V**. It's pasted just after the selected item, or at the end of the selected section. A section is pasted after the selected section.
+- You can switch to another page before pasting, to move or copy things between pages.
+- While you're typing on the page, Ctrl+X, C and V cut, copy and paste words as usual.
 
 ### Resizing
 
 - Select a picture, card, gallery, table, text box, quote, questions list and more. A **round handle** appears on its edge. Drag it to set the width. A label shows the width as a percentage of the column.
 - Or use the **Width** slider in the right panel, with quick buttons for **¼**, **½**, **¾** and **Full**.
 - Use **Align** to place a narrower item on the left, in the middle or on the right.
-- For a **Space** element, drag the handle at the bottom to set its height, or use the **Exact height** slider.
+- For a **Space** element, drag the handle at the bottom to set its height, or use the **Exact height** slider. An upright **Line** has the same handle for its length.
 - On phones, items always use the full width so they stay readable.
 
 ---
@@ -149,7 +168,7 @@ In a **text box**, select some words to get the formatting toolbar: **bold**, *i
 | Button | A call to action that links somewhere. |
 | Link | A simple text link, with an optional arrow. |
 | Picture | A photo or image, with a caption, a description, a shape and an optional link. |
-| Line | A divider between parts of a page. |
+| Line | A divider between parts of a page. It can run **across** or **up and down**. An upright line can have a set length or **fill the column** from top to bottom. |
 | Space | Empty space of a height you choose. |
 | Gallery | A grid of pictures that open larger when clicked. |
 | Slideshow | Pictures that change by themselves, with an optional slow zoom. |
@@ -177,7 +196,8 @@ Click a section's empty edge to select it. In the right panel you can change:
 - the space above and below, the width, and how contents line up vertically,
 - the background colour or a background picture, with a dark overlay to keep text readable,
 - **parallax** (the background stays still while the page scrolls),
-- a **section name**, so links can jump straight to this section.
+- a **section name**, so links can jump straight to this section,
+- **Lines between columns**: none, line, dashed or dotted. They run the full height of the section's contents, and become lines across on phones, where the columns stack.
 
 On phones, columns stack on top of each other automatically.
 
@@ -254,7 +274,7 @@ To add links that aren't your own pages (a shop, a booking site, social media), 
 
 ---
 
-## 12. Colours, fonts and the header and footer
+## 12. Colours, fonts, the header and footer, and page buttons
 
 Open the **Design** tab.
 
@@ -266,6 +286,17 @@ Open the **Design** tab.
 **Header:** click it on the page. Choose logo text or a logo picture, logo on the left or centred, whether it stays at the top while scrolling, and its colours.
 
 **Footer:** click it on the page. Type your footer text. `{year}` is replaced with the current year automatically. You can also show or hide the page links.
+
+**Back to top and Go to bottom buttons:** round buttons that stay in the corner of the screen while visitors scroll, on every page. Turn them on in the **Design** tab, under **Back to top and Go to bottom**:
+
+- **"Back to top" button** takes visitors back to the top of the page. It appears once they've scrolled down a little.
+- **"Go to bottom" button** takes them to the end of the page. It hides when they get there.
+- **Look:** **Arrow only** (round buttons) or **Arrow and words**.
+- **Corner:** bottom left or bottom right.
+- **Words:** change "Back to top" and "Go to bottom", for example into your website's language. With Arrow only, the words show when people point at the button and are read out by screen readers.
+- **Colours:** the button colour, and the colour of the arrow and words.
+
+In Edit view the buttons always show, so you can see where they sit. Click them to change their settings. To see them appear and hide as you scroll, use **Preview**. They use the keyboard too, and they don't print.
 
 Each element also has a **Look** section in the right panel: alignment, width, text size, colours, padding, rounded corners, shadow, and **Hide on phones**.
 
@@ -453,6 +484,9 @@ There is also a version that runs in a web browser, handy for trying Pocket-Web-
 | Undo / Redo | Ctrl+Z / Ctrl+Y | Cmd+Z / Cmd+Shift+Z |
 | Duplicate selected item | Ctrl+D | Cmd+D |
 | Delete selected item | Delete | Delete |
+| Cut / copy / paste an item or section | Ctrl+X / C / V | Cmd+X / C / V |
+| Move the selected item up / down / left / right | Alt+↑ / ↓ / ← / → | Option+↑ / ↓ / ← / → |
+| Move to another section or page | Ctrl+Shift+M | Cmd+Shift+M |
 | Link selected words | Ctrl+K | Cmd+K |
 | Check spelling on every page | F7 | F7 |
 | Edit / Preview / Code | Ctrl+1 / 2 / 3 | Cmd+1 / 2 / 3 |
